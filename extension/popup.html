@@ -1293,83 +1293,6 @@
       </div>
     </section>
 
-    <section class="section" id="doc-upload-section">
-      <div class="section-head">
-        <h2 class="section-title">Document / Image</h2>
-        <div class="section-meta">Dashboard Tool</div>
-      </div>
-
-      <div class="quick-upload">
-        <div class="quick-upload-head">
-          <div class="quick-upload-title">Upload to analyze</div>
-          <div class="quick-upload-meta">Vision AI</div>
-        </div>
-
-        <div class="drop-zone" id="drop-zone">
-          <input type="file" id="doc-file-input" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,application/pdf" />
-          <div class="drop-icon">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 13H9l3-7 3 7h-2v2h-2v-2zm1-9.5c.83 0 1.5.67 1.5 1.5S12.83 8.5 12 8.5 10.5 7.83 10.5 7s.67-1.5 1.5-1.5z" fill="url(#uploadGradient)"/>
-              <defs>
-                <linearGradient id="uploadGradient" x1="2" y1="2" x2="22" y2="22" gradientUnits="userSpaceOnUse">
-                  <stop offset="0%" stop-color="#6366f1"/>
-                  <stop offset="100%" stop-color="#0ea5e9"/>
-                </linearGradient>
-              </defs>
-            </svg>
-          </div>
-          <div class="drop-label">Drop image or PDF here</div>
-          <div class="drop-hint">Or click to browse</div>
-        </div>
-
-        <div class="file-preview" id="doc-file-preview">
-          <img id="doc-preview-img" src="" alt="Preview" />
-          <div class="file-name-bar" id="doc-file-name">-</div>
-        </div>
-
-        <div class="doc-status" id="doc-status"></div>
-
-        <div class="quick-upload-actions">
-          <button class="primary-btn action-btn" id="doc-analyze-btn" disabled>Analyze Document</button>
-        </div>
-      </div>
-
-      <div class="doc-results" id="doc-results">
-
-        <div class="doc-result-block">
-          <div class="doc-result-label">Summary</div>
-          <div class="doc-result-text" id="doc-summary"></div>
-        </div>
-
-        <div class="doc-result-block">
-          <div class="doc-result-label">Key Points</div>
-          <ul class="doc-list" id="doc-key-points"></ul>
-        </div>
-
-        <div class="doc-result-block">
-          <div class="doc-result-label">Risks</div>
-          <ul class="doc-list risk" id="doc-risks"></ul>
-        </div>
-
-        <div class="doc-result-block">
-          <div class="doc-result-label">Accessibility Hint</div>
-          <div class="doc-result-text" id="doc-hint"></div>
-        </div>
-
-        <div class="doc-result-block">
-          <div class="doc-result-label">Document Intent</div>
-          <div class="doc-result-text" id="doc-intent"></div>
-        </div>
-
-        <div class="doc-result-block">
-          <div class="doc-result-label">Extracted Text</div>
-          <button class="doc-extracted-toggle" id="doc-extracted-toggle">Show raw text ▾</button>
-          <div class="doc-extracted-text" id="doc-extracted-text"></div>
-        </div>
-
-      </div>
-    </section>
-
     <section class="section">
       <div class="section-head">
         <h2 class="section-title">Page Summary</h2>
@@ -1405,46 +1328,6 @@
       <div class="list" id="reputation-examples"></div>
     </section>
 
-    <section class="section" id="chat-section" style="display: none;">
-      <div class="section-head">
-        <h2 class="section-title">Ask the Document</h2>
-        <div class="section-meta" id="chat-meta">AI Assistant</div>
-      </div>
-      <div class="chat-window" id="chat-window">
-        <div class="chat-message chat-ai">Ask me anything about this agreement. You can ask in English, Hindi, or any
-          supported Indian language!</div>
-      </div>
-      <div class="chat-input-row">
-        <select id="chat-lang" class="tts-select"
-          style="max-width: 95px; text-overflow: ellipsis; white-space: nowrap; overflow: hidden; padding: 0 8px;">
-          <option value="en-IN">Eng (IN)</option>
-          <option value="hi-IN">Hindi</option>
-          <option value="mr-IN">Marathi</option>
-          <option value="ta-IN">Tamil</option>
-          <option value="te-IN">Telugu</option>
-          <option value="bn-IN">Bengali</option>
-          <option value="gu-IN">Gujarati</option>
-          <option value="kn-IN">Kannada</option>
-          <option value="ml-IN">Malayalam</option>
-          <option value="pa-IN">Punjabi</option>
-        </select>
-        <button id="chat-mic-btn" class="secondary-btn chat-mic-btn" type="button" title="Speak your question" aria-label="Speak your question">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-            <path d="M12 15.5A3.5 3.5 0 0 0 15.5 12V7A3.5 3.5 0 1 0 8.5 7v5a3.5 3.5 0 0 0 3.5 3.5Z" fill="currentColor" />
-            <path d="M6.5 11.5A5.5 5.5 0 0 0 17.5 11.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
-            <path d="M12 17v3.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
-            <path d="M9 20.5h6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
-          </svg>
-        </button>
-        <input type="text" id="chat-input" placeholder="Type your question..." autocomplete="off" />
-        <button id="chat-send-btn" class="primary-btn chat-send-btn">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-            <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" fill="currentColor" />
-          </svg>
-        </button>
-      </div>
-      </div>
-    </section>
 
     <!-- ── Interactive Quiz ──────────────────────────────────────────── -->
     <section class="section" id="quiz-section" style="display: none;">

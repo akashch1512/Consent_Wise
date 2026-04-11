@@ -283,8 +283,8 @@ function setAnalysisState({
     setLoginSafety("Caution", "Hold on while the site is being analyzed.");
     renderPointList(summaryPoints, [], "Preparing a readable summary...", "chip");
     renderPointList(reputationExamples, [], "Checking for known reputation concerns...", "list-item");
-    ttsControls.style.display = "none";
-    chatSection.style.display = "none";
+    if (ttsControls) ttsControls.style.display = "none";
+    if (chatSection) chatSection.style.display = "none";
     if (quizSection) quizSection.style.display = "none";
     return;
   }
@@ -307,13 +307,13 @@ function setAnalysisState({
   renderPointList(reputationExamples, badExamples, "No verified bad history was identified from this analysis.", "list-item");
 
   if (summary && summary !== "Analyze a page with terms, sign-in, consent, or payment language to populate this summary.") {
-    ttsControls.style.display = "flex";
-    chatSection.style.display = "block";
+    if (ttsControls) ttsControls.style.display = "flex";
+    if (chatSection) chatSection.style.display = "block";
     if (quizSection) quizSection.style.display = "block";
-    resetChat();
+    if (chatSection) resetChat();
   } else {
-    ttsControls.style.display = "none";
-    chatSection.style.display = "none";
+    if (ttsControls) ttsControls.style.display = "none";
+    if (chatSection) chatSection.style.display = "none";
     if (quizSection) quizSection.style.display = "none";
   }
 }
@@ -579,6 +579,7 @@ function restoreLatestAnalysis() {
 }
 
 function resetChat() {
+  if (!chatWindow || !chatInput) return;
   chatHistory = [];
   chatWindow.innerHTML = '<div class="chat-message chat-ai">Ask me anything about this agreement. You can ask in English, Hindi, or any supported Indian language!</div>';
   chatInput.value = "";
@@ -586,6 +587,7 @@ function resetChat() {
 }
 
 function appendMessage(role, text) {
+  if (!chatWindow) return;
   const msgDiv = document.createElement("div");
   msgDiv.className = `chat-message ${role === "user" ? "chat-user" : "chat-ai"}`;
   msgDiv.textContent = text;
@@ -965,6 +967,10 @@ setupSpeechRecognition();
   const docIntent = document.getElementById("doc-intent");
   const extractedText = document.getElementById("doc-extracted-text");
   const extractedToggle = document.getElementById("doc-extracted-toggle");
+
+  if (!dropZone || !fileInput || !filePreview || !previewImg || !fileNameEl || !docStatus || !analyzeBtn || !docResults || !docSummary || !docKeyPoints || !docRisks || !docHint || !docIntent || !extractedText || !extractedToggle) {
+    return;
+  }
 
   let selectedFile = null;
 
