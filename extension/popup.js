@@ -46,7 +46,19 @@ const chatSendBtn = document.getElementById("chat-send-btn");
 const chatLang = document.getElementById("chat-lang");
 const chatMicBtn = document.getElementById("chat-mic-btn");
 
+const quizSection = document.getElementById("quiz-section");
+const quizLang = document.getElementById("quiz-lang");
+const quizGenerateBtn = document.getElementById("quiz-generate-btn");
+const quizContainer = document.getElementById("quiz-container");
+const quizQuestionText = document.getElementById("quiz-question-text");
+const quizOptA = document.getElementById("quiz-opt-a");
+const quizOptB = document.getElementById("quiz-opt-b");
+const quizExplanationBox = document.getElementById("quiz-explanation-box");
+const quizNextBtn = document.getElementById("quiz-next-btn");
+
 let chatHistory = [];
+let currentQuizData = [];
+let currentQuizIndex = 0;
 let latestOriginalText = "";
 let isListening = false;
 let speechBaseValue = "";
@@ -248,6 +260,7 @@ function setAnalysisState({
     renderPointList(reputationExamples, [], "Checking for known reputation concerns...", "list-item");
     ttsControls.style.display = "none";
     chatSection.style.display = "none";
+    if (quizSection) quizSection.style.display = "none";
     return;
   }
 
@@ -271,10 +284,12 @@ function setAnalysisState({
   if (summary && summary !== "Analyze a page with terms, sign-in, consent, or payment language to populate this summary.") {
     ttsControls.style.display = "flex";
     chatSection.style.display = "block";
+    if (quizSection) quizSection.style.display = "block";
     resetChat();
   } else {
     ttsControls.style.display = "none";
     chatSection.style.display = "none";
+    if (quizSection) quizSection.style.display = "none";
   }
 }
 
@@ -730,6 +745,140 @@ ttsPlayBtn.addEventListener("click", async () => {
     if (!isPlaying) ttsPlayBtn.textContent = "Listen";
   }
 });
+
+/* ── Interactive Quiz Logic ────────────────────────────────────────── */
+if (quizLang) {
+  quizLang.addEventListener("change", () => {
+    if (quizLang.value === "hi-IN" || quizLang.value === "mr-IN") {
+      document.body.style.fontFamily = "'Noto Sans Devanagari', 'Space Grotesk', sans-serif";
+      document.body.style.fontWeight = "500";
+    } else {
+      document.body.style.fontFamily = "'Space Grotesk', sans-serif";
+      document.body.style.fontWeight = "400";
+    }
+  });
+}
+
+function renderQuizQuestion(index) {
+  if (!currentQuizData || currentQuizData.length === 0) return;
+  if (index >= currentQuizData.length) {
+    quizQuestionText.textContent = "Great job! You've completed the quiz.";
+    quizOptA.style.display = "none";
+    quizOptB.style.display = "none";
+    quizExplanationBox.style.display = "none";
+    quizNextBtn.style.display = "none";
+    return;
+  }
+  
+  const q = currentQuizData[index];
+  quizQuestionText.textContent = `Q${index + 1}: ${q.question}`;
+  quizOptA.textContent = `A) ${q.option_a}`;
+  quizOptB.textContent = `B) ${q.option_b}`;
+  
+  // Reset states
+  quizOptA.style.display = "block";
+  quizOptB.style.display = "block";
+  quizOptA.style.borderColor = "#e2e8f0";
+  quizOptA.style.background = "#fff";
+  quizOptA.style.color = "#334155";
+  quizOptA.disabled = false;
+  
+  quizOptB.style.borderColor = "#e2e8f0";
+  quizOptB.style.background = "#fff";
+  quizOptB.style.color = "#334155";
+  quizOptB.disabled = false;
+  
+  quizExplanationBox.style.display = "none";
+  quizNextBtn.style.display = "none";
+}
+
+function handleQuizAnswer(selectedOpt, btnEl) {
+  const q = currentQuizData[currentQuizIndex];
+  const isCorrect = (selectedOpt === q.correct_option);
+  
+  quizOptA.disabled = true;
+  quizOptB.disabled = true;
+  
+  if (isCorrect) {
+    btnEl.style.borderColor = "#16a34a";
+    btnEl.style.background = "#dcfce7";
+    btnEl.style.color = "#166534";
+  } else {
+    btnEl.style.borderColor = "#dc2626";
+    btnEl.style.background = "#fee2e2";
+    btnEl.style.color = "#991b1b";
+    
+    const correctBtn = (q.correct_option === "A") ? quizOptA : quizOptB;
+    correctBtn.style.borderColor = "#16a34a";
+  }
+  
+  quizExplanationBox.textContent = q.explanation;
+  quizExplanationBox.style.display = "block";
+  
+  if (currentQuizIndex < currentQuizData.length - 1) {
+    quizNextBtn.style.display = "block";
+  } else {
+    quizNextBtn.textContent = "Finish";
+    quizNextBtn.style.display = "block";
+    quizNextBtn.onclick = () => { renderQuizQuestion(999); };
+  }
+}
+
+if (quizGenerateBtn) {
+  quizGenerateBtn.addEventListener("click", async () => {
+    if (!latestOriginalText) {
+      alert("Please analyze a document first!");
+      return;
+    }
+    
+    quizContainer.style.display = "flex";
+    quizQuestionText.textContent = "Loading engaging quiz locally formatted for you...";
+    quizOptA.style.display = "none";
+    quizOptB.style.display = "none";
+    quizExplanationBox.style.display = "none";
+    quizNextBtn.style.display = "none";
+    quizGenerateBtn.disabled = true;
+    quizGenerateBtn.textContent = "Generating...";
+    
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/generate-quiz`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          document_context: latestOriginalText,
+          language_code: quizLang.value
+        })
+      });
+      if (!res.ok) throw new Error("Quiz generation failed.");
+      
+      const data = await res.json();
+      if (data && data.questions && data.questions.length > 0) {
+        currentQuizData = data.questions;
+        currentQuizIndex = 0;
+        renderQuizQuestion(0);
+      } else {
+        throw new Error("No questions retrieved.");
+      }
+    } catch (err) {
+      console.error(err);
+      quizQuestionText.textContent = "Failed to generate quiz. Please try again.";
+    } finally {
+      quizGenerateBtn.disabled = false;
+      quizGenerateBtn.textContent = "Generate Quiz";
+    }
+  });
+}
+
+if (quizOptA) quizOptA.addEventListener("click", () => handleQuizAnswer("A", quizOptA));
+if (quizOptB) quizOptB.addEventListener("click", () => handleQuizAnswer("B", quizOptB));
+
+if (quizNextBtn) {
+  quizNextBtn.addEventListener("click", () => {
+    if (quizNextBtn.textContent === "Finish") return;
+    currentQuizIndex++;
+    renderQuizQuestion(currentQuizIndex);
+  });
+}
 
 openDashboardBtn.addEventListener("click", openDashboard);
 openLatestBtn.addEventListener("click", openLatestReport);

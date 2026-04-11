@@ -3,8 +3,11 @@ from typing import List
 from pydantic import BaseModel, Field
 
 
+from typing import Optional
+
 class QuizRequest(BaseModel):
     document_context: str = Field(..., description="The parsed document text or terms from the frontend")
+    language_code: Optional[str] = Field("en-IN", description="The requested display language for the quiz components")
 
 
 class QuizQuestion(BaseModel):

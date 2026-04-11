@@ -22,17 +22,31 @@ def _get_api_key() -> str:
     return api_key
 
 
-def _build_quiz_payload(document_context: str) -> dict:
+def _build_quiz_payload(document_context: str, language_code: str = "en-IN") -> dict:
+    language_map = {
+        "hi-IN": "Hindi",
+        "mr-IN": "Marathi",
+        "ta-IN": "Tamil",
+        "te-IN": "Telugu",
+        "bn-IN": "Bengali",
+        "gu-IN": "Gujarati",
+        "kn-IN": "Kannada",
+        "ml-IN": "Malayalam",
+        "pa-IN": "Punjabi",
+    }
+    target_lang = language_map.get(language_code, "English")
+
     prompt = (
         "Generate an interactive quiz based on the following document context to check if the user actually read it.\n\n"
         "1. Create exactly 3-5 multiple-choice questions focusing ONLY on the most critical sections: hidden risks, penalties, financial obligations, and unexpected clauses.\n"
         "2. For each question, provide exactly TWO options (option A and option B).\n"
         "3. Specify which option is correct ('A' or 'B').\n"
         "4. Provide a short, easy-to-understand explanation of the correct answer so we can show it to the user if they pick the wrong one.\n"
-        "5. If the document has no critical risks, generate questions based on the core rules mentioned.\n\n"
+        "5. If the document has no critical risks, generate questions based on the core rules mentioned.\n"
+        f"6. CRITICAL: Provide your ENTIRE final output securely translated into {target_lang}. The questions, the options, and the explanations MUST be naturally written in {target_lang}.\n\n"
         "Document Context:\n"
         f"{document_context}\n\n"
-        "Return the response ONLY as a valid JSON object strictly matching this format:\n"
+        "Return the response ONLY as a valid JSON object strictly matching this format (the keys must remain English):\n"
         "{\n"
         '  "questions": [\n'
         "    {\n"
@@ -72,7 +86,7 @@ def _clean_json_text(text: str) -> str:
     return text.strip()
 
 
-async def generate_quiz(document_context: str) -> QuizResponse:
+async def generate_quiz(document_context: str, language_code: str = "en-IN") -> QuizResponse:
     if not document_context.strip():
         raise HTTPException(status_code=400, detail="Document context cannot be empty.")
 
@@ -83,7 +97,7 @@ async def generate_quiz(document_context: str) -> QuizResponse:
     }
     
     url = f"https://generativelanguage.googleapis.com/v1beta/models/{QUIZ_MODEL}:generateContent"
-    payload = _build_quiz_payload(document_context)
+    payload = _build_quiz_payload(document_context, language_code)
 
     async with httpx.AsyncClient(timeout=45.0) as client:
         response = await client.post(url, json=payload, headers=headers)
