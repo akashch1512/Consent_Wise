@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 
 from pydantic import BaseModel, Field
 
@@ -12,3 +12,63 @@ class SummaryResponse(BaseModel):
     key_points: List[str]
     accessibility_hint: str
     intent: str
+
+
+class ExtensionFeature(BaseModel):
+    title: str
+    description: str
+    status: str = "active"
+
+
+class ExtensionConfigResponse(BaseModel):
+    product_name: str
+    tagline: str
+    status_text: str
+    status_badge: str
+    dashboard_label: str
+    dashboard_url: str
+    panel_title: str
+    panel_loading_copy: str
+    panel_empty_copy: str
+    footer_text: str
+    features: List[ExtensionFeature]
+
+
+class ExtensionAnalyzeRequest(BaseModel):
+    text: str = Field(..., title="Extracted policy or page text")
+    title: str = ""
+    url: str = ""
+    source: str = "extension"
+
+
+class RiskSignal(BaseModel):
+    label: str
+    severity: str
+    explanation: str
+
+
+class AnalysisRecord(BaseModel):
+    analysis_id: str
+    source: str
+    title: str
+    url: str
+    summary: str
+    key_points: List[str]
+    accessibility_hint: str
+    intent: str
+    risk_signals: List[RiskSignal]
+    recommended_action: str
+    original_text_excerpt: str
+
+
+class ExtensionAnalyzeResponse(AnalysisRecord):
+    dashboard_url: str
+    panel_kicker: str
+    panel_meta: str
+
+
+class AnalysisPageResponse(BaseModel):
+    product_name: str
+    dashboard_heading: str
+    dashboard_subheading: str
+    analysis: AnalysisRecord

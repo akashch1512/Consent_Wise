@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 
 from app.api.schemas import SummaryResponse
 
-load_dotenv()
+load_dotenv(".env")
 
 GEMINI_MODEL = "gemini-2.5-flash"
 GEMINI_API_URL = (
@@ -46,8 +46,23 @@ def _build_payload(prompt: str) -> dict:
             "temperature": 0.1,
             "maxOutputTokens": 1024,
             "responseMimeType": "application/json",
-            "thinkingConfig": {
-                "thinkingLevel": "minimal",
+            "responseSchema": {
+                "type": "OBJECT",
+                "properties": {
+                    "summary": {"type": "STRING"},
+                    "key_points": {
+                        "type": "ARRAY",
+                        "items": {"type": "STRING"},
+                    },
+                    "accessibility_hint": {"type": "STRING"},
+                    "intent": {"type": "STRING"},
+                },
+                "required": [
+                    "summary",
+                    "key_points",
+                    "accessibility_hint",
+                    "intent",
+                ],
             },
         },
     }
@@ -108,6 +123,27 @@ def _extract_json_object(raw_text: str) -> dict:
     )
 
 
+def _fallback_summary_from_text(raw_text: str, original_text: str) -> SummaryResponse:
+    cleaned = " ".join(raw_text.split()).strip()
+    if not cleaned:
+        cleaned = "Summary unavailable from the model response."
+
+    first_sentence = cleaned.split(". ")[0].strip()
+    if first_sentence and not first_sentence.endswith("."):
+        first_sentence += "."
+
+    excerpt = " ".join(original_text.split()).strip()[:220]
+    return SummaryResponse(
+        summary=first_sentence or cleaned[:240],
+        key_points=[
+            cleaned[:180] or "Model returned an unstructured response.",
+            f"Original excerpt: {excerpt}" if excerpt else "Original text was provided by the extension.",
+        ],
+        accessibility_hint="This result used backend fallback parsing because the model response was not clean JSON.",
+        intent="General policy or consent explanation",
+    )
+
+
 async def generate_summary(text: str) -> SummaryResponse:
     api_key = os.getenv("GEMINI_API_KEY")
     if not api_key:
@@ -136,6 +172,7 @@ async def generate_summary(text: str) -> SummaryResponse:
 
     text_parts = _extract_text_parts(response.json())
     parsed = None
+    combined_text = "\n".join(text_parts)
     for part in reversed(text_parts):
         try:
             parsed = _extract_json_object(part)
@@ -144,12 +181,12 @@ async def generate_summary(text: str) -> SummaryResponse:
             continue
 
     if parsed is None:
-        parsed = _extract_json_object("\n".join(text_parts))
+        try:
+            parsed = _extract_json_object(combined_text)
+        except HTTPException:
+            return _fallback_summary_from_text(combined_text, text)
 
     try:
         return SummaryResponse(**parsed)
     except Exception as exc:
-        raise HTTPException(
-            status_code=502,
-            detail="Gemini response JSON did not match the expected schema.",
-        ) from exc
+        return _fallback_summary_from_text(combined_text, text)
