@@ -906,3 +906,56 @@ setupSpeechRecognition();
     docStatus.className   = "doc-status" + (type ? ` ${type}` : "");
   }
 })();
+
+// ── Welcome & Onboarding Logic ─────────────────────────────────────────
+(function initWelcome() {
+  const welcomeScreen = document.getElementById("welcome-screen");
+  const onboardScreen = document.getElementById("onboarding-screen");
+  const mainApp = document.getElementById("main-app");
+  const getStartedBtn = document.getElementById("get-started-btn");
+  const finishSetupBtn = document.getElementById("finish-setup-btn");
+  const chips = document.querySelectorAll(".onboard-chip");
+
+  if (welcomeScreen && onboardScreen && mainApp && getStartedBtn && finishSetupBtn) {
+    chrome.storage.local.get(["hasSeenWelcome"], (data) => {
+      if (data.hasSeenWelcome) {
+        welcomeScreen.style.display = "none";
+        onboardScreen.style.display = "none";
+        mainApp.style.display = "block";
+      } else {
+        welcomeScreen.style.display = "flex";
+        onboardScreen.style.display = "none";
+        mainApp.style.display = "none";
+      }
+    });
+
+    getStartedBtn.addEventListener("click", () => {
+      welcomeScreen.style.display = "none";
+      onboardScreen.style.display = "flex";
+    });
+
+    finishSetupBtn.addEventListener("click", () => {
+      // Dummy step: no need to save name/email/selections for now.
+      chrome.storage.local.set({ hasSeenWelcome: true });
+      onboardScreen.style.display = "none";
+      mainApp.style.display = "block";
+    });
+
+    // Chip toggling
+    chips.forEach(chip => {
+      chip.addEventListener("click", () => {
+        // Toggle this chip
+        chip.classList.toggle("selected");
+        
+        // If they select "Equal Importance", maybe deselect others, but for a dummy form it's fine just to toggle.
+        if (chip.textContent === "Equal Importance" && chip.classList.contains("selected")) {
+          chips.forEach(c => { if (c !== chip) c.classList.remove("selected"); });
+        } else if (chip.classList.contains("selected")) {
+          // If they select anything else, remove Equal Importance
+          const equalChip = Array.from(chips).find(c => c.textContent === "Equal Importance");
+          if (equalChip) equalChip.classList.remove("selected");
+        }
+      });
+    });
+  }
+})();
