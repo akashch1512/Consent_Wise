@@ -23,7 +23,8 @@
     "scripting",
     "tabs",
     "storage",
-    "offscreen"
+    "offscreen",
+    "microphone"
   ],
   "host_permissions": [
     "<all_urls>",
