@@ -728,11 +728,345 @@
 
     .doc-status.error { color: var(--bad); }
     .doc-status.loading { color: var(--accent); }
+
+    /* ── Welcome Screen ───────────────────────────────────────────────── */
+    .welcome-shell {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 620px;
+      padding: 26px;
+      overflow: hidden;
+      text-align: center;
+      background:
+        radial-gradient(circle at top left, rgba(191, 219, 254, 0.45), transparent 34%),
+        radial-gradient(circle at top right, rgba(226, 232, 240, 0.8), transparent 36%),
+        linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+    }
+
+    .welcome-shell::before,
+    .welcome-shell::after {
+      content: "";
+      position: absolute;
+      border-radius: 50%;
+      pointer-events: none;
+    }
+
+    .welcome-shell::before {
+      width: 220px;
+      height: 220px;
+      top: -72px;
+      right: -88px;
+      background: radial-gradient(circle, rgba(125, 211, 252, 0.28), rgba(125, 211, 252, 0));
+    }
+
+    .welcome-shell::after {
+      width: 180px;
+      height: 180px;
+      bottom: -64px;
+      left: -70px;
+      background: radial-gradient(circle, rgba(196, 181, 253, 0.24), rgba(196, 181, 253, 0));
+    }
+
+    .welcome-content {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+      width: 100%;
+      padding: 28px 22px 22px;
+      border-radius: 28px;
+      border: 1px solid rgba(148, 163, 184, 0.18);
+      background: rgba(255, 255, 255, 0.82);
+      box-shadow: 0 22px 60px rgba(15, 23, 42, 0.08);
+      backdrop-filter: blur(12px);
+      animation: cg-slideUp 0.4s ease forwards;
+    }
+
+    .welcome-badge {
+      padding: 7px 12px;
+      border-radius: 999px;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #4f46e5;
+      background: rgba(238, 242, 255, 0.92);
+      border: 1px solid rgba(99, 102, 241, 0.12);
+    }
+
+    .welcome-icon {
+      width: 82px;
+      height: 82px;
+      border-radius: 26px;
+      background: linear-gradient(145deg, #f8fbff, #eef5ff);
+      border: 1px solid rgba(148, 163, 184, 0.18);
+      display: grid;
+      place-items: center;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+    }
+
+    .welcome-title {
+      font-size: 26px;
+      font-weight: 700;
+      color: var(--text);
+      margin: 0;
+      line-height: 1.2;
+      letter-spacing: -0.03em;
+    }
+
+    .welcome-desc {
+      max-width: 280px;
+      font-size: 13px;
+      color: #64748b;
+      line-height: 1.7;
+      margin: 0;
+    }
+
+    .welcome-highlights {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+      width: 100%;
+      margin-top: 2px;
+    }
+
+    .welcome-highlight {
+      padding: 11px 8px;
+      border-radius: 18px;
+      background: rgba(248, 250, 252, 0.92);
+      border: 1px solid rgba(226, 232, 240, 0.95);
+      font-size: 10px;
+      font-weight: 600;
+      line-height: 1.45;
+      color: #475569;
+      text-align: center;
+    }
+
+    .welcome-btn {
+      width: 100%;
+      margin-top: 4px;
+      padding: 16px 20px;
+      font-size: 15px;
+      border-radius: 16px;
+    }
+
+    .onboarding-shell {
+      align-items: flex-start;
+      padding-top: 22px;
+    }
+
+    .onboarding-content {
+      align-items: stretch;
+      text-align: left;
+      padding-top: 24px;
+    }
+
+    .onboarding-header {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+
+    .onboarding-art {
+      position: relative;
+      width: 100%;
+      height: 118px;
+      overflow: hidden;
+      border-radius: 22px;
+      border: 1px solid rgba(226, 232, 240, 0.95);
+      background:
+        radial-gradient(circle at 20% 20%, rgba(147, 197, 253, 0.35), transparent 26%),
+        radial-gradient(circle at 80% 30%, rgba(196, 181, 253, 0.28), transparent 24%),
+        linear-gradient(135deg, #f8fbff 0%, #ffffff 100%);
+    }
+
+    .onboarding-art::before {
+      content: "";
+      position: absolute;
+      inset: 18px 22px auto auto;
+      width: 124px;
+      height: 124px;
+      border-radius: 28px;
+      border: 1px solid rgba(148, 163, 184, 0.16);
+      background: rgba(255, 255, 255, 0.7);
+      transform: rotate(18deg);
+    }
+
+    .onboarding-art::after {
+      content: "";
+      position: absolute;
+      left: 24px;
+      bottom: 20px;
+      width: 150px;
+      height: 54px;
+      border-radius: 18px;
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.95), rgba(248, 250, 252, 0.95));
+      border: 1px solid rgba(226, 232, 240, 0.9);
+      box-shadow: 0 12px 24px rgba(148, 163, 184, 0.12);
+    }
+
+    .onboarding-art-copy {
+      position: absolute;
+      left: 40px;
+      bottom: 36px;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .onboarding-art-line {
+      height: 7px;
+      border-radius: 999px;
+      background: linear-gradient(90deg, rgba(99, 102, 241, 0.24), rgba(14, 165, 233, 0.14));
+    }
+
+    .onboarding-art-line.short {
+      width: 72px;
+    }
+
+    .onboarding-art-line.long {
+      width: 102px;
+    }
+
+    /* ── Onboarding Screen ────────────────────────────────────────────── */
+    .onboard-form {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      width: 100%;
+    }
+
+    .onboard-label {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 4px;
+    }
+
+    .onboard-input {
+      width: 100%;
+      padding: 13px 14px;
+      border-radius: 14px;
+      border: 1px solid #dbe4ee;
+      font-family: inherit;
+      font-size: 13px;
+      color: var(--text);
+      background: rgba(248, 250, 252, 0.95);
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+    }
+
+    .onboard-input:focus {
+      border-color: var(--accent);
+      background: #ffffff;
+      box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.08);
+    }
+
+    .onboard-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .onboard-chip {
+      padding: 8px 13px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 600;
+      color: #475569;
+      background: rgba(248, 250, 252, 0.95);
+      border: 1px solid #dbe4ee;
+      cursor: pointer;
+      user-select: none;
+      transition: all 0.2s;
+    }
+
+    .onboard-chip.selected {
+      background: #eef2ff;
+      color: var(--accent);
+      border-color: var(--accent);
+      box-shadow: 0 8px 18px rgba(99, 102, 241, 0.12);
+    }
   </style>
 </head>
 
 <body>
-  <main class="shell">
+  <main class="welcome-shell" id="welcome-screen">
+    <div class="welcome-content">
+      <div class="welcome-badge">Private by design</div>
+      <div class="welcome-icon">
+        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M12 2L4 6V12C4 16.8 7.2 20.9 12 22C16.8 20.9 20 16.8 20 12V6L12 2Z" fill="url(#welcomeShield)" />
+          <path d="M8.8 12.2L10.9 14.3L15.6 9.6" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+          <defs>
+            <linearGradient id="welcomeShield" x1="4" y1="2" x2="20" y2="22" gradientUnits="userSpaceOnUse">
+              <stop offset="0%" stop-color="#6366f1" />
+              <stop offset="100%" stop-color="#0ea5e9" />
+            </linearGradient>
+          </defs>
+        </svg>
+      </div>
+      <h1 class="welcome-title">Welcome to ConsentWise AI</h1>
+      <p class="welcome-desc">A calm, clear way to review privacy terms, spot risky clauses, and understand what a service is really asking from you.</p>
+      <div class="welcome-highlights" aria-hidden="true">
+        <div class="welcome-highlight">Terms made easier to scan</div>
+        <div class="welcome-highlight">Privacy signals at a glance</div>
+        <div class="welcome-highlight">Minimal, distraction-free flow</div>
+      </div>
+      <button class="primary-btn welcome-btn" id="get-started-btn">Get Started</button>
+    </div>
+  </main>
+
+  <main class="welcome-shell onboarding-shell" id="onboarding-screen" style="display: none;">
+    <div class="welcome-content onboarding-content">
+      <div class="onboarding-art" aria-hidden="true">
+        <div class="onboarding-art-copy">
+          <div class="onboarding-art-line long"></div>
+          <div class="onboarding-art-line short"></div>
+        </div>
+      </div>
+      <div class="onboarding-header">
+        <div class="welcome-badge">Quick setup</div>
+        <h1 class="welcome-title" style="font-size: 22px;">Let's personalize your checks</h1>
+        <p class="welcome-desc" style="max-width: none; font-size: 12px;">Tell us what matters most, and we’ll bring those clauses forward whenever you review a policy.</p>
+      </div>
+      
+      <div class="onboard-form">
+        <div>
+          <div class="onboard-label">Personal Details</div>
+          <input type="text" class="onboard-input" placeholder="Your Name" style="margin-bottom: 8px;" />
+          <input type="email" class="onboard-input" placeholder="Your Email" />
+        </div>
+        
+        <div>
+          <div class="onboard-label">I'm most interested in...</div>
+          <div class="onboard-chips" id="onboard-chips-container">
+            <div class="onboard-chip">Hidden Charges</div>
+            <div class="onboard-chip">Unfair Terms</div>
+            <div class="onboard-chip">Privacy</div>
+            <div class="onboard-chip">Data Sharing / Selling</div>
+            <div class="onboard-chip">Encryption</div>
+            <div class="onboard-chip">Autopay & Subs</div>
+            <div class="onboard-chip">Manipulation</div>
+            <div class="onboard-chip selected">Equal Importance</div>
+            <div class="onboard-chip">Other</div>
+          </div>
+        </div>
+
+        <button class="primary-btn welcome-btn" id="finish-setup-btn">Finish Setup</button>
+      </div>
+    </div>
+  </main>
+
+  <main class="shell" id="main-app" style="display: none;">
     <section class="hero">
       <div class="brand-row">
         <div class="brand">
