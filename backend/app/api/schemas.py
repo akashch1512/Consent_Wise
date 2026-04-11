@@ -5,9 +5,16 @@ from pydantic import BaseModel, Field
 
 class SummaryRequest(BaseModel):
     text: str = Field(..., title="Policy text to summarize")
+    title: str = ""
+    url: str = ""
 
 
 class SummaryResponse(BaseModel):
+    danger_score: int = Field(..., ge=0, le=100)
+    reputation_score: int = Field(..., ge=0, le=100)
+    login_safety: str
+    reputation_summary: str
+    reputation_examples: List[str]
     summary: str
     key_points: List[str]
     accessibility_hint: str
@@ -52,6 +59,11 @@ class AnalysisRecord(BaseModel):
     source: str
     title: str
     url: str
+    danger_score: int
+    reputation_score: int
+    login_safety: str
+    reputation_summary: str
+    reputation_examples: List[str]
     summary: str
     key_points: List[str]
     accessibility_hint: str

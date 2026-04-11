@@ -32,7 +32,11 @@ async def summarize_policy(request: SummaryRequest):
             status_code=400,
             detail="Text cannot be empty.",
         )
-    return await generate_summary(cleaned_text)
+    return await generate_summary(
+        cleaned_text,
+        title=request.title.strip(),
+        url=request.url.strip(),
+    )
 
 
 @router.get("/extension/config", response_model=ExtensionConfigResponse)

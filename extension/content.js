@@ -14,8 +14,16 @@
 
   // ─── Config ────────────────────────────────────────────────────────────────
   const WEB_APP_URL = "http://localhost:3000";
+  const BACKEND_ANALYZE_URL = "http://localhost:8000/api/extension/analyze";
+  const BACKEND_DASHBOARD_URL = "http://localhost:8000/dashboard";
   const MAX_CONTENT_LENGTH = 5000;
   const POLICY_KEYWORDS = ["terms", "privacy", "conditions", "consent", "authorize", "authorization", "policy"];
+  const EXCLUDED_ORIGINS = new Set([
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://localhost:8000",
+    "http://127.0.0.1:8000",
+  ]);
 
   /** Keywords that flag a button as a consent / payment trigger */
   const BUTTON_KEYWORDS = ["agree", "pay", "proceed", "continue", "accept", "confirm", "subscribe", "buy now"];
@@ -28,6 +36,11 @@
   window.__consentGuardInitialized = true;
 
   console.log("[ConsentGuard AI] 🛡️  Initialised on:", window.location.href);
+
+  if (EXCLUDED_ORIGINS.has(window.location.origin)) {
+    console.log("[ConsentGuard AI] ↩️  Skipping interception on trusted app origin:", window.location.origin);
+    return;
+  }
 
   // ─── Utility: extract & truncate page text ─────────────────────────────────
   function extractPageContent() {
@@ -71,24 +84,57 @@
     return chunks.join("\n\n").slice(0, MAX_CONTENT_LENGTH);
   }
 
-  // ─── Utility: open web-app with encoded content ────────────────────────────
-  function redirectToWebApp(extractedText) {
-    const encoded = encodeURIComponent(extractedText);
-    const targetURL = `${WEB_APP_URL}?data=${encoded}`;
-    console.log("[ConsentGuard AI] 🔀 Redirecting to web app:", targetURL.slice(0, 120) + "…");
-
+  function openAnalysisTab(targetURL) {
     chrome.runtime.sendMessage(
       { action: "openTab", url: targetURL },
       (response) => {
         if (chrome.runtime.lastError) {
           console.warn("[ConsentGuard AI] Runtime error:", chrome.runtime.lastError.message);
-          // Fallback: open directly
           window.open(targetURL, "_blank");
         } else {
           console.log("[ConsentGuard AI] ✅ Tab opened via background:", response);
         }
       }
     );
+  }
+
+  function bumpStorageCounter(key) {
+    chrome.storage.local.get([key], (data) => {
+      const nextValue = (data && typeof data[key] === "number" ? data[key] : 0) + 1;
+      chrome.storage.local.set({ [key]: nextValue });
+    });
+  }
+
+  // ─── Utility: create backend report and open dashboard ─────────────────────
+  async function redirectToWebApp(extractedText) {
+    const fallbackTargetURL = BACKEND_DASHBOARD_URL;
+
+    try {
+      const response = await fetch(BACKEND_ANALYZE_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          text: extractedText,
+          title: document.title || "",
+          url: window.location.href,
+          source: "intercept-flow",
+        }),
+      });
+
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || !data.dashboard_url) {
+        throw new Error(data.detail || "Backend dashboard URL was not returned.");
+      }
+
+      console.log("[ConsentGuard AI] 🔀 Redirecting to backend dashboard:", data.dashboard_url);
+      bumpStorageCounter("tabsOpened");
+      openAnalysisTab(data.dashboard_url);
+      return;
+    } catch (error) {
+      console.warn("[ConsentGuard AI] Backend analysis failed, opening fallback app:", error.message);
+    }
+
+    openAnalysisTab(fallbackTargetURL || WEB_APP_URL);
   }
 
   // ─── Overlay ───────────────────────────────────────────────────────────────
@@ -281,6 +327,7 @@
       highlightElement(checkbox);
 
       console.log("[ConsentGuard AI] 🚫 Checkbox intercept fired.");
+      bumpStorageCounter("interceptCount");
 
       showOverlay(() => {
         const content = extractPageContent();
@@ -302,6 +349,7 @@
         highlightElement(btn);
 
         console.log("[ConsentGuard AI] 🚫 Button intercept fired:", btn.innerText.slice(0, 40));
+        bumpStorageCounter("interceptCount");
 
         showOverlay(() => {
           const content = extractPageContent();

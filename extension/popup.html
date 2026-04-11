@@ -5,449 +5,493 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>ConsentGuard AI</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet" />
   <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
     :root {
-      --bg-base:    #080d1a;
-      --bg-card:    #0e1528;
-      --bg-raised:  #141d30;
-      --border:     rgba(108,99,255,0.2);
-      --purple:     #6C63FF;
-      --blue:       #3B82F6;
-      --teal:       #06b6d4;
-      --green:      #10b981;
-      --text-1:     #f0f4ff;
-      --text-2:     #94a3b8;
-      --text-3:     #475569;
-      --red:        #ef4444;
+      --bg: #07111f;
+      --card: rgba(11, 20, 35, 0.88);
+      --line: rgba(148, 163, 184, 0.14);
+      --text: #eff6ff;
+      --muted: #94a3b8;
+      --good: #22c55e;
+      --warn: #f59e0b;
+      --bad: #ef4444;
+      --cool: #38bdf8;
+      --danger-angle: 8deg;
+      --danger-color: #38bdf8;
+      --reputation-angle: 8deg;
+      --reputation-color: #38bdf8;
     }
 
+    * { box-sizing: border-box; }
+
     body {
-      width: 340px;
-      min-height: 480px;
-      background: var(--bg-base);
-      font-family: 'Inter', -apple-system, sans-serif;
-      color: var(--text-1);
+      margin: 0;
+      width: 390px;
+      min-height: 620px;
+      color: var(--text);
+      font-family: "Space Grotesk", sans-serif;
+      background:
+        radial-gradient(circle at top left, rgba(56, 189, 248, 0.26), transparent 34%),
+        radial-gradient(circle at top right, rgba(239, 68, 68, 0.18), transparent 30%),
+        linear-gradient(180deg, #0a1528 0%, #040a14 100%);
+    }
+
+    .shell { padding: 16px; }
+
+    .hero,
+    .section,
+    .stat {
+      background: var(--card);
+      border: 1px solid var(--line);
+      box-shadow: 0 18px 40px rgba(0, 0, 0, 0.25);
+    }
+
+    .hero {
+      border-radius: 24px;
+      padding: 18px;
+      position: relative;
       overflow: hidden;
     }
 
-    /* ─── Top gradient bar ── */
-    .top-bar {
-      height: 3px;
-      background: linear-gradient(90deg, var(--purple), var(--blue), var(--teal));
-    }
-
-    /* ─── Header ── */
-    header {
-      padding: 20px 20px 0;
-      position: relative;
-    }
-
-    .logo-row {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      margin-bottom: 4px;
-    }
-
-    .shield-icon {
-      width: 36px;
-      height: 36px;
-      background: linear-gradient(135deg, rgba(108,99,255,0.2), rgba(59,130,246,0.15));
-      border: 1px solid rgba(108,99,255,0.35);
-      border-radius: 10px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-shrink: 0;
-    }
-
-    .brand-name {
-      font-size: 17px;
-      font-weight: 800;
-      letter-spacing: -0.5px;
-      color: var(--text-1);
-    }
-
-    .brand-name span {
-      background: linear-gradient(90deg, var(--purple), var(--blue));
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-    }
-
-    .tagline {
-      font-size: 11.5px;
-      color: var(--text-3);
-      letter-spacing: 0.3px;
-      padding-left: 46px;
-    }
-
-    /* ─── Status pill ── */
-    .status-row {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      margin: 16px 20px 0;
-      padding: 10px 14px;
-      background: rgba(16,185,129,0.08);
-      border: 1px solid rgba(16,185,129,0.2);
-      border-radius: 10px;
-    }
-
-    .status-dot {
-      width: 8px;
-      height: 8px;
+    .hero::after {
+      content: "";
+      position: absolute;
+      right: -32px;
+      bottom: -48px;
+      width: 140px;
+      height: 140px;
       border-radius: 50%;
-      background: var(--green);
-      box-shadow: 0 0 6px rgba(16,185,129,0.7);
-      animation: blink 2.2s ease infinite;
-      flex-shrink: 0;
+      background: radial-gradient(circle, rgba(34, 197, 94, 0.2), transparent 68%);
+      pointer-events: none;
     }
 
-    .status-text {
-      font-size: 12.5px;
-      font-weight: 600;
-      color: var(--green);
-      flex: 1;
-    }
-
-    .status-badge {
-      font-size: 10px;
-      font-weight: 700;
-      color: var(--green);
-      background: rgba(16,185,129,0.15);
-      padding: 2px 8px;
-      border-radius: 999px;
-      letter-spacing: 0.5px;
-      text-transform: uppercase;
-    }
-
-    /* ─── Divider ── */
-    .divider {
-      height: 1px;
-      background: linear-gradient(90deg, transparent, var(--border), transparent);
-      margin: 16px 0;
-    }
-
-    /* ─── Section title ── */
-    .section-title {
-      font-size: 10px;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.8px;
-      color: var(--text-3);
-      padding: 0 20px;
-      margin-bottom: 10px;
-    }
-
-    /* ─── Feature list ── */
-    .feature-list {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-      padding: 0 20px;
-      list-style: none;
-    }
-
-    .feature-item {
-      display: flex;
-      align-items: flex-start;
-      gap: 10px;
-      padding: 10px 12px;
-      background: var(--bg-card);
-      border: 1px solid rgba(255,255,255,0.05);
-      border-radius: 10px;
-      transition: border-color 0.2s, background 0.2s;
-    }
-
-    .feature-item:hover {
-      background: var(--bg-raised);
-      border-color: var(--border);
-    }
-
-    .feature-icon {
-      width: 28px;
-      height: 28px;
-      border-radius: 8px;
+    .brand-row,
+    .section-head,
+    .stat-row,
+    .login-strip {
       display: flex;
       align-items: center;
-      justify-content: center;
-      flex-shrink: 0;
-      font-size: 13px;
+      justify-content: space-between;
+      gap: 12px;
     }
 
-    .fi-purple { background: rgba(108,99,255,0.15); border: 1px solid rgba(108,99,255,0.25); }
-    .fi-blue   { background: rgba(59,130,246,0.15);  border: 1px solid rgba(59,130,246,0.25);  }
-    .fi-teal   { background: rgba(6,182,212,0.15);   border: 1px solid rgba(6,182,212,0.25);   }
-
-    .feature-text {
-      flex: 1;
-    }
-
-    .feature-text strong {
-      display: block;
-      font-size: 12.5px;
-      font-weight: 600;
-      color: var(--text-1);
-      margin-bottom: 1px;
-    }
-
-    .feature-text small {
-      font-size: 11px;
-      color: var(--text-3);
-      line-height: 1.4;
-    }
-
-    .check-badge {
-      font-size: 11px;
-      color: var(--green);
-      font-weight: 700;
-      flex-shrink: 0;
-      align-self: center;
-    }
-
-    /* ─── Stats bar ── */
-    .stats-bar {
+    .brand {
       display: flex;
-      gap: 8px;
-      padding: 0 20px;
-      margin: 14px 0 0;
+      align-items: center;
+      gap: 12px;
     }
 
-    .stat-card {
-      flex: 1;
-      background: var(--bg-card);
-      border: 1px solid rgba(255,255,255,0.05);
-      border-radius: 10px;
-      padding: 10px 8px;
+    .shield {
+      width: 42px;
+      height: 42px;
+      border-radius: 14px;
+      display: grid;
+      place-items: center;
+      background: linear-gradient(135deg, rgba(56, 189, 248, 0.2), rgba(34, 197, 94, 0.18));
+      border: 1px solid rgba(125, 211, 252, 0.16);
+    }
+
+    .eyebrow {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      color: #7dd3fc;
+    }
+
+    .title {
+      margin-top: 3px;
+      font-size: 22px;
+      font-weight: 700;
+    }
+
+    .status-pill,
+    .badge,
+    .chip {
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .status-pill {
+      padding: 8px 12px;
+      color: #86efac;
+      background: rgba(34, 197, 94, 0.14);
+      border: 1px solid rgba(34, 197, 94, 0.2);
+    }
+
+    .hero-copy {
+      margin: 12px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.55;
+    }
+
+    .meter-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-top: 16px;
+    }
+
+    .meter-card {
+      padding: 14px;
+      border-radius: 20px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.05);
       text-align: center;
     }
 
-    .stat-value {
-      font-size: 18px;
-      font-weight: 800;
-      background: linear-gradient(90deg, var(--purple), var(--blue));
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-      display: block;
-    }
-
-    .stat-label {
-      font-size: 9.5px;
-      font-weight: 600;
-      color: var(--text-3);
+    .meter-label {
+      color: var(--muted);
+      font-size: 11px;
       text-transform: uppercase;
-      letter-spacing: 0.4px;
-      display: block;
-      margin-top: 2px;
+      letter-spacing: 0.12em;
     }
 
-    /* ─── CTA button ── */
-    .cta-wrap {
-      padding: 16px 20px 20px;
+    .meter-ring {
+      position: relative;
+      width: 108px;
+      height: 108px;
+      margin: 10px auto 0;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      background:
+        radial-gradient(circle at center, #08111d 58%, transparent 59%),
+        conic-gradient(var(--ring-color) 0 var(--ring-angle), rgba(148, 163, 184, 0.16) var(--ring-angle) 360deg);
     }
 
-    .analysis-panel {
-      margin: 14px 20px 0;
-      padding: 12px 14px;
-      background: var(--bg-card);
+    .meter-ring::after {
+      content: "";
+      position: absolute;
+      inset: 15px;
+      border-radius: 50%;
+      background: #08111d;
       border: 1px solid rgba(255,255,255,0.05);
-      border-radius: 12px;
-      display: none;
     }
 
-    .analysis-panel.visible {
-      display: block;
+    .meter-value,
+    .meter-caption {
+      position: relative;
+      z-index: 1;
     }
 
-    .analysis-panel.loading .analysis-copy {
-      color: var(--text-2);
-    }
-
-    .analysis-kicker {
-      font-size: 10px;
+    .meter-value {
+      font-size: 30px;
       font-weight: 700;
+      line-height: 1;
+    }
+
+    .meter-caption {
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 10px;
       text-transform: uppercase;
-      letter-spacing: 0.7px;
-      color: var(--purple);
-      margin-bottom: 8px;
+      letter-spacing: 0.08em;
     }
 
-    .analysis-copy {
+    .meter-title {
+      margin-top: 10px;
+      font-size: 16px;
+      font-weight: 700;
+    }
+
+    .meter-copy {
+      margin-top: 6px;
+      color: var(--muted);
       font-size: 12px;
+      line-height: 1.5;
+      min-height: 36px;
+    }
+
+    .login-strip {
+      margin-top: 14px;
+      padding: 12px 14px;
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .login-label {
+      color: var(--muted);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+    }
+
+    .login-value {
+      margin-top: 4px;
+      font-size: 16px;
+      font-weight: 700;
+    }
+
+    .badge {
+      padding: 8px 10px;
+      border: 1px solid transparent;
+    }
+
+    .badge.safe {
+      color: #86efac;
+      background: rgba(34, 197, 94, 0.14);
+      border-color: rgba(34, 197, 94, 0.18);
+    }
+
+    .badge.caution {
+      color: #fcd34d;
+      background: rgba(245, 158, 11, 0.14);
+      border-color: rgba(245, 158, 11, 0.18);
+    }
+
+    .badge.unsafe {
+      color: #fca5a5;
+      background: rgba(239, 68, 68, 0.14);
+      border-color: rgba(239, 68, 68, 0.18);
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .stat {
+      border-radius: 18px;
+      padding: 12px;
+      text-align: center;
+    }
+
+    .stat strong {
+      display: block;
+      font-size: 22px;
+    }
+
+    .stat span {
+      display: block;
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .section {
+      margin-top: 12px;
+      border-radius: 20px;
+      padding: 14px;
+    }
+
+    .section-title {
+      margin: 0;
+      font-size: 15px;
+    }
+
+    .section-meta {
+      color: var(--muted);
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+    }
+
+    .summary-box,
+    .reputation-box,
+    .list-item {
+      margin-top: 10px;
+      padding: 12px;
+      border-radius: 16px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .summary-box,
+    .reputation-box {
+      font-size: 13px;
+      line-height: 1.6;
+      color: #e2e8f0;
+    }
+
+    .chip-row,
+    .list {
+      display: grid;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .chip {
+      display: inline-flex;
+      width: fit-content;
+      padding: 6px 10px;
+      color: #c9f3ff;
+      background: rgba(125, 211, 252, 0.08);
+      border: 1px solid rgba(125, 211, 252, 0.12);
+    }
+
+    .list-item {
+      font-size: 12.5px;
       line-height: 1.55;
-      color: var(--text-1);
     }
 
-    .analysis-meta {
-      font-size: 10.5px;
-      color: var(--text-3);
-      margin-top: 8px;
+    .actions {
+      display: grid;
+      gap: 10px;
+      margin-top: 14px;
     }
 
-    .cta-btn {
-      width: 100%;
-      padding: 13px;
-      background: linear-gradient(135deg, var(--purple) 0%, var(--blue) 100%);
+    button {
+      appearance: none;
       border: none;
-      border-radius: 12px;
-      color: #fff;
-      font-size: 13.5px;
+      border-radius: 14px;
+      font-family: inherit;
+      font-size: 13px;
       font-weight: 700;
       cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      letter-spacing: 0.2px;
-      transition: transform 0.15s ease, box-shadow 0.15s ease;
-      box-shadow: 0 4px 18px rgba(108,99,255,0.35);
-      font-family: inherit;
+      transition: transform 0.16s ease, box-shadow 0.16s ease, opacity 0.16s ease;
     }
 
-    .cta-btn:hover {
-      transform: translateY(-1px);
-      box-shadow: 0 6px 24px rgba(108,99,255,0.5);
+    button:hover { transform: translateY(-1px); }
+    button:active { transform: scale(0.98); }
+    button:disabled { cursor: not-allowed; opacity: 0.55; transform: none; }
+
+    .primary-btn {
+      padding: 14px 16px;
+      color: #04101d;
+      background: linear-gradient(135deg, #7dd3fc 0%, #4ade80 100%);
+      box-shadow: 0 12px 28px rgba(56, 189, 248, 0.18);
     }
 
-    .cta-btn:active {
-      transform: scale(0.97);
+    .secondary-btn {
+      padding: 13px 16px;
+      color: var(--text);
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.08);
     }
 
-    /* ─── Footer ── */
-    footer {
-      padding: 0 20px 16px;
+    .footer-note {
+      margin-top: 12px;
+      color: var(--muted);
+      font-size: 11px;
       text-align: center;
+      line-height: 1.5;
     }
 
-    .footer-text {
-      font-size: 10.5px;
-      color: var(--text-3);
-    }
-
-    .footer-text a {
-      color: var(--purple);
+    .footer-note a {
+      color: #7dd3fc;
       text-decoration: none;
-      font-weight: 600;
-    }
-
-    /* ─── Keyframes ── */
-    @keyframes blink {
-      0%, 100% { opacity: 1; }
-      50%       { opacity: 0.4; }
     }
   </style>
 </head>
 <body>
-
-  <!-- Top gradient accent bar -->
-  <div class="top-bar"></div>
-
-  <!-- Header -->
-  <header>
-    <div class="logo-row">
-      <div class="shield-icon">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M12 2L3 6V12C3 16.97 7.02 21.61 12 23C16.98 21.61 21 16.97 21 12V6L12 2Z"
-                fill="url(#pgShield)" />
-          <path d="M8.5 12l2.5 2.5L15.5 9.5" stroke="white" stroke-width="1.8"
-                stroke-linecap="round" stroke-linejoin="round"/>
-          <defs>
-            <linearGradient id="pgShield" x1="3" y1="2" x2="21" y2="23" gradientUnits="userSpaceOnUse">
-              <stop offset="0%" stop-color="#6C63FF"/>
-              <stop offset="100%" stop-color="#3B82F6"/>
-            </linearGradient>
-          </defs>
-        </svg>
+  <main class="shell">
+    <section class="hero">
+      <div class="brand-row">
+        <div class="brand">
+          <div class="shield">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M12 2L4 6V12C4 16.8 7.2 20.9 12 22C16.8 20.9 20 16.8 20 12V6L12 2Z" fill="url(#shieldGradient)" />
+              <path d="M8.8 12.2L10.9 14.3L15.6 9.6" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+              <defs>
+                <linearGradient id="shieldGradient" x1="4" y1="2" x2="20" y2="22" gradientUnits="userSpaceOnUse">
+                  <stop offset="0%" stop-color="#38BDF8" />
+                  <stop offset="100%" stop-color="#22C55E" />
+                </linearGradient>
+              </defs>
+            </svg>
+          </div>
+          <div>
+            <div class="eyebrow">ConsentGuard AI</div>
+            <div class="title">Website Safety Scan</div>
+          </div>
+        </div>
+        <div class="status-pill">Protection On</div>
       </div>
-      <div class="brand-name">ConsentGuard <span>AI</span></div>
-    </div>
-    <p class="tagline">Understand before you agree</p>
-  </header>
 
-  <!-- Status indicator -->
-  <div class="status-row">
-    <div class="status-dot"></div>
-    <span class="status-text">Protection Active</span>
-    <span class="status-badge">Live</span>
-  </div>
+      <p class="hero-copy">
+        Analyze the current page to get a clean danger score, website reputation score, and login safety guidance.
+      </p>
 
-  <div class="divider" style="margin: 16px 20px;"></div>
+      <div class="meter-grid">
+        <div class="meter-card">
+          <div class="meter-label">Danger Score</div>
+          <div class="meter-ring" id="danger-ring" style="--ring-angle: var(--danger-angle); --ring-color: var(--danger-color);">
+            <div>
+              <div class="meter-value" id="danger-value">--</div>
+              <div class="meter-caption">Risk</div>
+            </div>
+          </div>
+          <div class="meter-title" id="danger-title">Ready to Scan</div>
+          <div class="meter-copy" id="danger-copy">Waiting for analysis.</div>
+        </div>
 
-  <!-- Features -->
-  <p class="section-title">Active Safeguards</p>
-  <ul class="feature-list">
-    <li class="feature-item">
-      <div class="feature-icon fi-purple">🔍</div>
-      <div class="feature-text">
-        <strong>Consent Detection</strong>
-        <small>Monitors checkboxes &amp; agreement buttons in real time</small>
+        <div class="meter-card">
+          <div class="meter-label">Reputation Score</div>
+          <div class="meter-ring" id="reputation-ring" style="--ring-angle: var(--reputation-angle); --ring-color: var(--reputation-color);">
+            <div>
+              <div class="meter-value" id="reputation-value">--</div>
+              <div class="meter-caption">Trust</div>
+            </div>
+          </div>
+          <div class="meter-title" id="reputation-title">Awaiting Site Check</div>
+          <div class="meter-copy" id="reputation-copy">No reputation assessment yet.</div>
+        </div>
       </div>
-      <span class="check-badge">✔</span>
-    </li>
-    <li class="feature-item">
-      <div class="feature-icon fi-blue">🛑</div>
-      <div class="feature-text">
-        <strong>Blind Agreement Prevention</strong>
-        <small>Intercepts clicks before submission occurs</small>
+
+      <div class="login-strip">
+        <div>
+          <div class="login-label">Login Safety</div>
+          <div class="login-value" id="login-copy">Analyze a site before entering credentials.</div>
+        </div>
+        <div class="badge caution" id="login-badge">Caution</div>
       </div>
-      <span class="check-badge">✔</span>
-    </li>
-    <li class="feature-item">
-      <div class="feature-icon fi-teal">📋</div>
-      <div class="feature-text">
-        <strong>Safe Analysis Redirect</strong>
-        <small>Sends terms to your dashboard for full review</small>
+    </section>
+
+    <section class="stats">
+      <div class="stat">
+        <strong id="stat-blocked">0</strong>
+        <span>Intercepted</span>
       </div>
-      <span class="check-badge">✔</span>
-    </li>
-  </ul>
+      <div class="stat">
+        <strong id="stat-tabs">0</strong>
+        <span>Analyzed</span>
+      </div>
+      <div class="stat">
+        <strong>Live</strong>
+        <span>Mode</span>
+      </div>
+    </section>
 
-  <!-- Stats -->
-  <div class="stats-bar">
-    <div class="stat-card">
-      <span class="stat-value" id="stat-blocked">0</span>
-      <span class="stat-label">Intercepted</span>
+    <section class="section">
+      <div class="section-head">
+        <h2 class="section-title">Page Summary</h2>
+        <div class="section-meta" id="analysis-meta">Waiting for scan</div>
+      </div>
+      <div class="summary-box" id="analysis-summary">Analyze a page with terms, sign-in, consent, or payment language to populate this summary.</div>
+      <div class="chip-row" id="summary-points"></div>
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <h2 class="section-title">Site Reputation</h2>
+        <div class="section-meta" id="analysis-intent">No site classified</div>
+      </div>
+      <div class="reputation-box" id="reputation-summary">Reputation details will appear here after a scan.</div>
+      <div class="list" id="reputation-examples"></div>
+    </section>
+
+    <section class="actions">
+      <button class="primary-btn" id="analyze-current">Analyze Current Page</button>
+      <button class="secondary-btn" id="open-latest" disabled>Open Latest Report</button>
+      <button class="secondary-btn" id="open-dashboard">Open Login / Dashboard App</button>
+    </section>
+
+    <div class="footer-note">
+      Local app pages stay excluded from interception so your login flow keeps working.
+      <a href="http://localhost:3000" id="footer-link">Open app</a>
     </div>
-    <div class="stat-card">
-      <span class="stat-value" id="stat-tabs">0</span>
-      <span class="stat-label">Analyzed</span>
-    </div>
-    <div class="stat-card">
-      <span class="stat-value">V3</span>
-      <span class="stat-label">Manifest</span>
-    </div>
-  </div>
-
-  <div class="analysis-panel" id="analysis-panel">
-    <div class="analysis-kicker" id="analysis-kicker">Current Page</div>
-    <p class="analysis-copy" id="analysis-copy">Checking for terms and privacy content...</p>
-    <p class="analysis-meta" id="analysis-meta"></p>
-  </div>
-
-  <!-- CTA -->
-  <div class="cta-wrap">
-    <button class="cta-btn" id="open-dashboard">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-        <rect x="3" y="3" width="8" height="8" rx="2" fill="currentColor" opacity="0.7"/>
-        <rect x="13" y="3" width="8" height="8" rx="2" fill="currentColor"/>
-        <rect x="3" y="13" width="8" height="8" rx="2" fill="currentColor"/>
-        <rect x="13" y="13" width="8" height="8" rx="2" fill="currentColor" opacity="0.7"/>
-      </svg>
-      Open Dashboard
-    </button>
-  </div>
-
-  <!-- Footer -->
-  <footer>
-    <p class="footer-text">
-      Built for Hackathon · <a href="http://localhost:3000" id="footer-link">localhost:3000</a>
-    </p>
-  </footer>
+  </main>
 
   <script src="popup.js"></script>
 </body>
