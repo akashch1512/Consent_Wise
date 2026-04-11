@@ -506,6 +506,7 @@
       display: flex;
       gap: 8px;
       margin-top: 10px;
+      align-items: center;
     }
 
     #chat-input {
@@ -527,6 +528,41 @@
       padding: 0 16px;
       display: grid;
       place-items: center;
+      min-width: 56px;
+      height: 54px;
+    }
+
+    .chat-mic-btn {
+      padding: 0;
+      width: 54px;
+      height: 54px;
+      display: grid;
+      place-items: center;
+      flex-shrink: 0;
+      border-radius: 16px;
+      color: #475569;
+      background: #ffffff;
+      border: 1px solid #dbe4f0;
+      box-shadow: 0 8px 18px rgba(15, 23, 42, 0.06);
+    }
+
+    .chat-mic-btn:hover {
+      background: #f8fafc;
+      border-color: #cbd5e1;
+      box-shadow: 0 10px 22px rgba(15, 23, 42, 0.1);
+    }
+
+    .chat-mic-btn.listening {
+      color: #ffffff;
+      background: linear-gradient(135deg, #f97316 0%, #ef4444 100%);
+      border-color: transparent;
+      box-shadow: 0 10px 24px rgba(239, 68, 68, 0.3);
+    }
+
+    .chat-mic-btn:disabled {
+      background: #f8fafc;
+      border-color: #e2e8f0;
+      box-shadow: none;
     }
 
     /* ── Footer ───────────────────────────────────────────────────────── */
@@ -870,6 +906,14 @@
           <option value="ml-IN">Malayalam</option>
           <option value="pa-IN">Punjabi</option>
         </select>
+        <button id="chat-mic-btn" class="secondary-btn chat-mic-btn" type="button" title="Speak your question" aria-label="Speak your question">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M12 15.5A3.5 3.5 0 0 0 15.5 12V7A3.5 3.5 0 1 0 8.5 7v5a3.5 3.5 0 0 0 3.5 3.5Z" fill="currentColor" />
+            <path d="M6.5 11.5A5.5 5.5 0 0 0 17.5 11.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+            <path d="M12 17v3.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+            <path d="M9 20.5h6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+          </svg>
+        </button>
         <input type="text" id="chat-input" placeholder="Type your question..." autocomplete="off" />
         <button id="chat-send-btn" class="primary-btn chat-send-btn">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none">

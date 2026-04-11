@@ -44,9 +44,16 @@ const chatWindow = document.getElementById("chat-window");
 const chatInput = document.getElementById("chat-input");
 const chatSendBtn = document.getElementById("chat-send-btn");
 const chatLang = document.getElementById("chat-lang");
+const chatMicBtn = document.getElementById("chat-mic-btn");
 
 let chatHistory = [];
 let latestOriginalText = "";
+let isListening = false;
+let speechBaseValue = "";
+
+// Speech-to-text is handled via an offscreen document (Chrome MV3)
+// to work around the popup's sandbox restrictions on mic access.
+
 function animateNumber(el, from, to, duration) {
   if (!el) return;
   const start = performance.now();
@@ -518,6 +525,7 @@ function resetChat() {
   chatHistory = [];
   chatWindow.innerHTML = '<div class="chat-message chat-ai">Ask me anything about this agreement. You can ask in English, Hindi, or any supported Indian language!</div>';
   chatInput.value = "";
+  speechBaseValue = "";
 }
 
 function appendMessage(role, text) {
@@ -528,12 +536,96 @@ function appendMessage(role, text) {
   chatWindow.scrollTop = chatWindow.scrollHeight;
 }
 
+function setMicState(listening) {
+  isListening = listening;
+
+  if (!chatMicBtn) return;
+
+  chatMicBtn.classList.toggle("listening", listening);
+  chatMicBtn.disabled = false;
+  chatMicBtn.title = listening ? "Stop listening" : "Speak your question";
+  chatMicBtn.setAttribute("aria-label", listening ? "Stop listening" : "Speak your question");
+}
+
+function stopSpeechRecognition() {
+  if (isListening) {
+    chrome.runtime.sendMessage({ type: "stt-stop" }).catch(() => {});
+  }
+}
+
+function setupSpeechRecognition() {
+  if (!chatMicBtn) return;
+
+  // Listen for results relayed from the offscreen document via the background
+  chrome.runtime.onMessage.addListener((message) => {
+    if (message.target !== "popup") return;
+
+    if (message.type === "stt-started") {
+      speechBaseValue = chatInput.value.trim();
+      setMicState(true);
+    }
+
+    if (message.type === "stt-result") {
+      const spokenText = message.transcript;
+      chatInput.value = [speechBaseValue, spokenText]
+        .filter(Boolean)
+        .join(speechBaseValue && spokenText ? " " : "");
+    }
+
+    if (message.type === "stt-error") {
+      setMicState(false);
+      if (message.error === "not-allowed") {
+        appendMessage(
+          "model",
+          "Microphone access was denied. Please click the 🔒 lock icon in Chrome's address bar, set Microphone to \"Allow\", then try again."
+        );
+      } else if (message.error === "not-supported") {
+        chatMicBtn.disabled = true;
+        chatMicBtn.title = "Speech input is not supported";
+      } else if (message.error !== "no-speech" && message.error !== "aborted") {
+        appendMessage("model", "Speech input is unavailable right now. Please try again.");
+      }
+    }
+
+    if (message.type === "stt-ended") {
+      setMicState(false);
+      speechBaseValue = chatInput.value.trim();
+    }
+  });
+
+  chatMicBtn.addEventListener("click", () => {
+    if (isListening) {
+      stopSpeechRecognition();
+      return;
+    }
+
+    // Tell background to start offscreen speech recognition
+    setMicState(true); // optimistic — offscreen will confirm via stt-started
+    chatMicBtn.disabled = true;
+    chatMicBtn.title = "Starting...";
+
+    chrome.runtime.sendMessage({
+      type: "stt-start",
+      lang: chatLang?.value || "en-IN",
+    }).then(() => {
+      chatMicBtn.disabled = false;
+      chatInput.focus();
+    }).catch(() => {
+      setMicState(false);
+      appendMessage("model", "I couldn't start speech input. Please try again.");
+    });
+  });
+}
+
 chatSendBtn.addEventListener("click", async () => {
   const text = chatInput.value.trim();
   if (!text) return;
+
+  stopSpeechRecognition();
   
   appendMessage("user", text);
   chatInput.value = "";
+  speechBaseValue = "";
   chatSendBtn.disabled = true;
 
   const thinkingDiv = document.createElement("div");
@@ -580,6 +672,9 @@ chatInput.addEventListener("keypress", (e) => {
 
 if (chatLang) {
   chatLang.addEventListener("change", () => {
+    if (speechRecognition && isListening) {
+      stopSpeechRecognition();
+    }
     if (chatLang.value === "hi-IN" || chatLang.value === "mr-IN") {
       document.body.style.fontFamily = "'Noto Sans Devanagari', 'Space Grotesk', sans-serif";
       document.body.style.fontWeight = "500";
@@ -647,6 +742,7 @@ footerLink.addEventListener("click", (event) => {
 loadStats();
 setAnalysisState({});
 restoreLatestAnalysis();
+setupSpeechRecognition();
 
 // ── Document / Image Upload Feature ───────────────────────────────────────────
 
