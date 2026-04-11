@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ConsentGuard AI</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg-base:    #080d1a;
+      --bg-card:    #0e1528;
+      --bg-raised:  #141d30;
+      --border:     rgba(108,99,255,0.2);
+      --purple:     #6C63FF;
+      --blue:       #3B82F6;
+      --teal:       #06b6d4;
+      --green:      #10b981;
+      --text-1:     #f0f4ff;
+      --text-2:     #94a3b8;
+      --text-3:     #475569;
+      --red:        #ef4444;
+    }
+
+    body {
+      width: 340px;
+      min-height: 480px;
+      background: var(--bg-base);
+      font-family: 'Inter', -apple-system, sans-serif;
+      color: var(--text-1);
+      overflow: hidden;
+    }
+
+    /* ─── Top gradient bar ── */
+    .top-bar {
+      height: 3px;
+      background: linear-gradient(90deg, var(--purple), var(--blue), var(--teal));
+    }
+
+    /* ─── Header ── */
+    header {
+      padding: 20px 20px 0;
+      position: relative;
+    }
+
+    .logo-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 4px;
+    }
+
+    .shield-icon {
+      width: 36px;
+      height: 36px;
+      background: linear-gradient(135deg, rgba(108,99,255,0.2), rgba(59,130,246,0.15));
+      border: 1px solid rgba(108,99,255,0.35);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .brand-name {
+      font-size: 17px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      color: var(--text-1);
+    }
+
+    .brand-name span {
+      background: linear-gradient(90deg, var(--purple), var(--blue));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .tagline {
+      font-size: 11.5px;
+      color: var(--text-3);
+      letter-spacing: 0.3px;
+      padding-left: 46px;
+    }
+
+    /* ─── Status pill ── */
+    .status-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin: 16px 20px 0;
+      padding: 10px 14px;
+      background: rgba(16,185,129,0.08);
+      border: 1px solid rgba(16,185,129,0.2);
+      border-radius: 10px;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 6px rgba(16,185,129,0.7);
+      animation: blink 2.2s ease infinite;
+      flex-shrink: 0;
+    }
+
+    .status-text {
+      font-size: 12.5px;
+      font-weight: 600;
+      color: var(--green);
+      flex: 1;
+    }
+
+    .status-badge {
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--green);
+      background: rgba(16,185,129,0.15);
+      padding: 2px 8px;
+      border-radius: 999px;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+    }
+
+    /* ─── Divider ── */
+    .divider {
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--border), transparent);
+      margin: 16px 0;
+    }
+
+    /* ─── Section title ── */
+    .section-title {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: var(--text-3);
+      padding: 0 20px;
+      margin-bottom: 10px;
+    }
+
+    /* ─── Feature list ── */
+    .feature-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      padding: 0 20px;
+      list-style: none;
+    }
+
+    .feature-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 10px 12px;
+      background: var(--bg-card);
+      border: 1px solid rgba(255,255,255,0.05);
+      border-radius: 10px;
+      transition: border-color 0.2s, background 0.2s;
+    }
+
+    .feature-item:hover {
+      background: var(--bg-raised);
+      border-color: var(--border);
+    }
+
+    .feature-icon {
+      width: 28px;
+      height: 28px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      font-size: 13px;
+    }
+
+    .fi-purple { background: rgba(108,99,255,0.15); border: 1px solid rgba(108,99,255,0.25); }
+    .fi-blue   { background: rgba(59,130,246,0.15);  border: 1px solid rgba(59,130,246,0.25);  }
+    .fi-teal   { background: rgba(6,182,212,0.15);   border: 1px solid rgba(6,182,212,0.25);   }
+
+    .feature-text {
+      flex: 1;
+    }
+
+    .feature-text strong {
+      display: block;
+      font-size: 12.5px;
+      font-weight: 600;
+      color: var(--text-1);
+      margin-bottom: 1px;
+    }
+
+    .feature-text small {
+      font-size: 11px;
+      color: var(--text-3);
+      line-height: 1.4;
+    }
+
+    .check-badge {
+      font-size: 11px;
+      color: var(--green);
+      font-weight: 700;
+      flex-shrink: 0;
+      align-self: center;
+    }
+
+    /* ─── Stats bar ── */
+    .stats-bar {
+      display: flex;
+      gap: 8px;
+      padding: 0 20px;
+      margin: 14px 0 0;
+    }
+
+    .stat-card {
+      flex: 1;
+      background: var(--bg-card);
+      border: 1px solid rgba(255,255,255,0.05);
+      border-radius: 10px;
+      padding: 10px 8px;
+      text-align: center;
+    }
+
+    .stat-value {
+      font-size: 18px;
+      font-weight: 800;
+      background: linear-gradient(90deg, var(--purple), var(--blue));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      display: block;
+    }
+
+    .stat-label {
+      font-size: 9.5px;
+      font-weight: 600;
+      color: var(--text-3);
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+      display: block;
+      margin-top: 2px;
+    }
+
+    /* ─── CTA button ── */
+    .cta-wrap {
+      padding: 16px 20px 20px;
+    }
+
+    .analysis-panel {
+      margin: 14px 20px 0;
+      padding: 12px 14px;
+      background: var(--bg-card);
+      border: 1px solid rgba(255,255,255,0.05);
+      border-radius: 12px;
+      display: none;
+    }
+
+    .analysis-panel.visible {
+      display: block;
+    }
+
+    .analysis-panel.loading .analysis-copy {
+      color: var(--text-2);
+    }
+
+    .analysis-kicker {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.7px;
+      color: var(--purple);
+      margin-bottom: 8px;
+    }
+
+    .analysis-copy {
+      font-size: 12px;
+      line-height: 1.55;
+      color: var(--text-1);
+    }
+
+    .analysis-meta {
+      font-size: 10.5px;
+      color: var(--text-3);
+      margin-top: 8px;
+    }
+
+    .cta-btn {
+      width: 100%;
+      padding: 13px;
+      background: linear-gradient(135deg, var(--purple) 0%, var(--blue) 100%);
+      border: none;
+      border-radius: 12px;
+      color: #fff;
+      font-size: 13.5px;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      letter-spacing: 0.2px;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+      box-shadow: 0 4px 18px rgba(108,99,255,0.35);
+      font-family: inherit;
+    }
+
+    .cta-btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 24px rgba(108,99,255,0.5);
+    }
+
+    .cta-btn:active {
+      transform: scale(0.97);
+    }
+
+    /* ─── Footer ── */
+    footer {
+      padding: 0 20px 16px;
+      text-align: center;
+    }
+
+    .footer-text {
+      font-size: 10.5px;
+      color: var(--text-3);
+    }
+
+    .footer-text a {
+      color: var(--purple);
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    /* ─── Keyframes ── */
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0.4; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top gradient accent bar -->
+  <div class="top-bar"></div>
+
+  <!-- Header -->
+  <header>
+    <div class="logo-row">
+      <div class="shield-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M12 2L3 6V12C3 16.97 7.02 21.61 12 23C16.98 21.61 21 16.97 21 12V6L12 2Z"
+                fill="url(#pgShield)" />
+          <path d="M8.5 12l2.5 2.5L15.5 9.5" stroke="white" stroke-width="1.8"
+                stroke-linecap="round" stroke-linejoin="round"/>
+          <defs>
+            <linearGradient id="pgShield" x1="3" y1="2" x2="21" y2="23" gradientUnits="userSpaceOnUse">
+              <stop offset="0%" stop-color="#6C63FF"/>
+              <stop offset="100%" stop-color="#3B82F6"/>
+            </linearGradient>
+          </defs>
+        </svg>
+      </div>
+      <div class="brand-name">ConsentGuard <span>AI</span></div>
+    </div>
+    <p class="tagline">Understand before you agree</p>
+  </header>
+
+  <!-- Status indicator -->
+  <div class="status-row">
+    <div class="status-dot"></div>
+    <span class="status-text">Protection Active</span>
+    <span class="status-badge">Live</span>
+  </div>
+
+  <div class="divider" style="margin: 16px 20px;"></div>
+
+  <!-- Features -->
+  <p class="section-title">Active Safeguards</p>
+  <ul class="feature-list">
+    <li class="feature-item">
+      <div class="feature-icon fi-purple">🔍</div>
+      <div class="feature-text">
+        <strong>Consent Detection</strong>
+        <small>Monitors checkboxes &amp; agreement buttons in real time</small>
+      </div>
+      <span class="check-badge">✔</span>
+    </li>
+    <li class="feature-item">
+      <div class="feature-icon fi-blue">🛑</div>
+      <div class="feature-text">
+        <strong>Blind Agreement Prevention</strong>
+        <small>Intercepts clicks before submission occurs</small>
+      </div>
+      <span class="check-badge">✔</span>
+    </li>
+    <li class="feature-item">
+      <div class="feature-icon fi-teal">📋</div>
+      <div class="feature-text">
+        <strong>Safe Analysis Redirect</strong>
+        <small>Sends terms to your dashboard for full review</small>
+      </div>
+      <span class="check-badge">✔</span>
+    </li>
+  </ul>
+
+  <!-- Stats -->
+  <div class="stats-bar">
+    <div class="stat-card">
+      <span class="stat-value" id="stat-blocked">0</span>
+      <span class="stat-label">Intercepted</span>
+    </div>
+    <div class="stat-card">
+      <span class="stat-value" id="stat-tabs">0</span>
+      <span class="stat-label">Analyzed</span>
+    </div>
+    <div class="stat-card">
+      <span class="stat-value">V3</span>
+      <span class="stat-label">Manifest</span>
+    </div>
+  </div>
+
+  <div class="analysis-panel" id="analysis-panel">
+    <div class="analysis-kicker" id="analysis-kicker">Current Page</div>
+    <p class="analysis-copy" id="analysis-copy">Checking for terms and privacy content...</p>
+    <p class="analysis-meta" id="analysis-meta"></p>
+  </div>
+
+  <!-- CTA -->
+  <div class="cta-wrap">
+    <button class="cta-btn" id="open-dashboard">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+        <rect x="3" y="3" width="8" height="8" rx="2" fill="currentColor" opacity="0.7"/>
+        <rect x="13" y="3" width="8" height="8" rx="2" fill="currentColor"/>
+        <rect x="3" y="13" width="8" height="8" rx="2" fill="currentColor"/>
+        <rect x="13" y="13" width="8" height="8" rx="2" fill="currentColor" opacity="0.7"/>
+      </svg>
+      Open Dashboard
+    </button>
+  </div>
+
+  <!-- Footer -->
+  <footer>
+    <p class="footer-text">
+      Built for Hackathon · <a href="http://localhost:3000" id="footer-link">localhost:3000</a>
+    </p>
+  </footer>
+
+  <script src="popup.js"></script>
+</body>
+</html>
