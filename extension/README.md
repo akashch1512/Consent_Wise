@@ -1,4 +1,4 @@
-# 🛡️ ConsentGuard AI — Chrome Extension
+# 🛡️ ConsentWise AI — Chrome Extension
 
 > **Hackathon Project · Accessible Financial Authorization**
 > Intelligently detects financial consent actions, prevents blind agreement, and redirects users to a safe analysis dashboard.
@@ -8,7 +8,7 @@
 ## 📁 File Structure
 
 ```
-ConsentGuard-AI/
+ConsentWise-AI/
 ├── manifest.json       ← Manifest V3 config
 ├── content.js          ← Page-level detection & interception
 ├── background.js       ← Service worker / tab manager
@@ -33,7 +33,7 @@ You can use any small PNG files renamed to `icon16.png`, `icon48.png`, `icon128.
 1. Open Chrome → navigate to `chrome://extensions`
 2. Toggle **Developer Mode** ON (top-right)
 3. Click **"Load unpacked"**
-4. Select the `ConsentGuard-AI/` folder
+4. Select the `ConsentWise-AI/` folder
 5. The extension appears in your toolbar 🎉
 
 ### 3. Start your web app (optional, for full flow)
@@ -85,15 +85,15 @@ http://localhost:3000?data=ENCODED_TEXT
 
 ## 🐛 Debugging
 
-Open DevTools on any page → Console, filter by `[ConsentGuard`:
+Open DevTools on any page → Console, filter by `[ConsentWise`:
 
 ```
-[ConsentGuard AI] 🛡️  Initialised on: https://...
-[ConsentGuard AI] ☑️  Agreement checkbox detected
-[ConsentGuard AI] 🔘 Consent button detected: pay now
-[ConsentGuard AI] 🚫 Button intercept fired
-[ConsentGuard AI] 🔀 Redirecting to web app
-[ConsentGuard BG] ✅ New analysis tab created: 42
+[ConsentWise AI] 🛡️  Initialised on: https://...
+[ConsentWise AI] ☑️  Agreement checkbox detected
+[ConsentWise AI] 🔘 Consent button detected: pay now
+[ConsentWise AI] 🚫 Button intercept fired
+[ConsentWise AI] 🔀 Redirecting to web app
+[ConsentWise BG] ✅ New analysis tab created: 42
 ```
 
 ---

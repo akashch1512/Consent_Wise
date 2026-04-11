@@ -62,7 +62,7 @@ function animateNumber(el, from, to, duration) {
 function loadStats() {
   chrome.storage.local.get(["interceptCount", "tabsOpened"], (data) => {
     if (chrome.runtime.lastError) {
-      console.warn("[ConsentGuard Popup] Storage error:", chrome.runtime.lastError.message);
+      console.warn("[ConsentWise Popup] Storage error:", chrome.runtime.lastError.message);
       return;
     }
     animateNumber(statBlocked, 0, data.interceptCount || 0, 500);
@@ -307,7 +307,7 @@ async function ensureContentScriptAndGetText(tab) {
   }
 
   // ── Inject content script programmatically then retry ──────────────────────
-  console.log("[ConsentGuard Popup] Content script not found — injecting now into tab", tab.id);
+  console.log("[ConsentWise Popup] Content script not found — injecting now into tab", tab.id);
   try {
     await chrome.scripting.executeScript({
       target: { tabId: tab.id },
@@ -317,11 +317,11 @@ async function ensureContentScriptAndGetText(tab) {
     const payload = await sendMessageToTab(tab.id, { action: "getPolicyText" });
     if (payload && typeof payload.text === "string") return payload;
   } catch (injectErr) {
-    console.warn("[ConsentGuard Popup] Script injection failed:", injectErr.message);
+    console.warn("[ConsentWise Popup] Script injection failed:", injectErr.message);
   }
 
   // ── Last-resort: extract text directly via one-shot executeScript ──────────
-  console.log("[ConsentGuard Popup] Falling back to direct text extraction.");
+  console.log("[ConsentWise Popup] Falling back to direct text extraction.");
   const [result] = await chrome.scripting.executeScript({
     target: { tabId: tab.id },
     func: () => ({
@@ -442,7 +442,7 @@ async function analyzeCurrentTab() {
       loadStats();
     });
   } catch (error) {
-    console.warn("[ConsentGuard Popup] Analysis failed:", error.message);
+    console.warn("[ConsentWise Popup] Analysis failed:", error.message);
     setAnalysisState({
       meta: "Scan blocked",
       intent: "Unavailable",

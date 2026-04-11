@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════════════════════
-   ConsentGuard AI — styles.css  (Light Theme)
+   ConsentWise AI — styles.css  (Light Theme)
    Injected into every page via content_scripts.
    Contains: overlay backdrop, card, spinner, stepper, buttons.
    Uses a scope prefix (#cg-*) to avoid colliding with host-page styles.

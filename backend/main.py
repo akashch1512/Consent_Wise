@@ -7,8 +7,8 @@ from app.api.vision_routes import vision_router
 from app.api.quiz_routes import quiz_router
 
 app = FastAPI(
-    title="ConsentGuard AI",
-    description="Backend for the ConsentGuard AI Chrome extension — consent analysis, danger scoring, and site reputation.",
+    title="ConsentWise AI",
+    description="Backend for the ConsentWise AI Chrome extension — consent analysis, danger scoring, and site reputation.",
     version="1.0.0",
 )
 

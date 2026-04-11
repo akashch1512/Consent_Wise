@@ -1,5 +1,5 @@
 /**
- * ConsentGuard AI — content.js
+ * ConsentWise AI — content.js
  * ─────────────────────────────────────────────────────────────────────────────
  * Injected into every page. Responsible for:
  *   1. Detecting financial-consent checkboxes and intercepting them
@@ -32,13 +32,13 @@
   const AGREEMENT_KEYWORDS = ["agree", "terms", "conditions", "consent", "authorize", "policy", "accept"];
 
   // ─── Guard: run only once ──────────────────────────────────────────────────
-  if (window.__consentGuardInitialized) return;
-  window.__consentGuardInitialized = true;
+  if (window.__ConsentWiseInitialized) return;
+  window.__ConsentWiseInitialized = true;
 
-  console.log("[ConsentGuard AI] 🛡️  Initialised on:", window.location.href);
+  console.log("[ConsentWise AI] 🛡️  Initialised on:", window.location.href);
 
   if (EXCLUDED_ORIGINS.has(window.location.origin)) {
-    console.log("[ConsentGuard AI] ↩️  Skipping interception on trusted app origin:", window.location.origin);
+    console.log("[ConsentWise AI] ↩️  Skipping interception on trusted app origin:", window.location.origin);
     return;
   }
 
@@ -89,10 +89,10 @@
       { action: "openTab", url: targetURL },
       (response) => {
         if (chrome.runtime.lastError) {
-          console.warn("[ConsentGuard AI] Runtime error:", chrome.runtime.lastError.message);
+          console.warn("[ConsentWise AI] Runtime error:", chrome.runtime.lastError.message);
           window.open(targetURL, "_blank");
         } else {
-          console.log("[ConsentGuard AI] ✅ Tab opened via background:", response);
+          console.log("[ConsentWise AI] ✅ Tab opened via background:", response);
         }
       }
     );
@@ -126,12 +126,12 @@
         throw new Error(data.detail || "Backend dashboard URL was not returned.");
       }
 
-      console.log("[ConsentGuard AI] 🔀 Redirecting to backend dashboard:", data.dashboard_url);
+      console.log("[ConsentWise AI] 🔀 Redirecting to backend dashboard:", data.dashboard_url);
       bumpStorageCounter("tabsOpened");
       openAnalysisTab(data.dashboard_url);
       return;
     } catch (error) {
-      console.warn("[ConsentGuard AI] Backend analysis failed, opening fallback app:", error.message);
+      console.warn("[ConsentWise AI] Backend analysis failed, opening fallback app:", error.message);
     }
 
     openAnalysisTab(fallbackTargetURL || WEB_APP_URL);
@@ -148,7 +148,7 @@
     overlay.id = "cg-overlay";
     overlay.setAttribute("role", "dialog");
     overlay.setAttribute("aria-modal", "true");
-    overlay.setAttribute("aria-label", "ConsentGuard AI — financial consent intercepted");
+    overlay.setAttribute("aria-label", "ConsentWise AI — financial consent intercepted");
 
     overlay.innerHTML = `
       <div id="cg-card">
@@ -169,7 +169,7 @@
               </defs>
             </svg>
           </div>
-          <span id="cg-brand">ConsentGuard <span class="cg-ai">AI</span></span>
+          <span id="cg-brand">ConsentWise <span class="cg-ai">AI</span></span>
           <button id="cg-close" aria-label="Dismiss">&times;</button>
         </div>
 
@@ -240,7 +240,7 @@
 
     document.getElementById("cg-btn-cancel").addEventListener("click", () => {
       removeOverlay();
-      console.log("[ConsentGuard AI] User cancelled — no redirect.");
+      console.log("[ConsentWise AI] User cancelled — no redirect.");
     });
 
     document.getElementById("cg-close").addEventListener("click", () => {
@@ -278,7 +278,7 @@
     el.style.transition = "box-shadow 0.3s ease, outline 0.3s ease";
     el.style.outline = "2.5px solid #EF4444";
     el.style.boxShadow = "0 0 0 4px rgba(239,68,68,0.25)";
-    console.log("[ConsentGuard AI] 🔴 Element highlighted:", el.tagName, el.textContent.slice(0, 40));
+    console.log("[ConsentWise AI] 🔴 Element highlighted:", el.tagName, el.textContent.slice(0, 40));
   }
 
   // ─── Check if checkbox is agreement-related ────────────────────────────────
@@ -298,7 +298,7 @@
     const matched = AGREEMENT_KEYWORDS.some((kw) => combined.includes(kw));
 
     if (matched) {
-      console.log("[ConsentGuard AI] ☑️  Agreement checkbox detected. Context:", combined.slice(0, 80));
+      console.log("[ConsentWise AI] ☑️  Agreement checkbox detected. Context:", combined.slice(0, 80));
     }
     return matched;
   }
@@ -308,7 +308,7 @@
     const text = (btn.innerText || btn.value || btn.getAttribute("aria-label") || "").toLowerCase().trim();
     const matched = BUTTON_KEYWORDS.some((kw) => text.includes(kw));
     if (matched) {
-      console.log("[ConsentGuard AI] 🔘 Consent button detected:", text.slice(0, 60));
+      console.log("[ConsentWise AI] 🔘 Consent button detected:", text.slice(0, 60));
     }
     return matched;
   }
@@ -326,7 +326,7 @@
       checkbox.checked = false;
       highlightElement(checkbox);
 
-      console.log("[ConsentGuard AI] 🚫 Checkbox intercept fired.");
+      console.log("[ConsentWise AI] 🚫 Checkbox intercept fired.");
       bumpStorageCounter("interceptCount");
 
       showOverlay(() => {
@@ -348,7 +348,7 @@
         e.stopImmediatePropagation();
         highlightElement(btn);
 
-        console.log("[ConsentGuard AI] 🚫 Button intercept fired:", btn.innerText.slice(0, 40));
+        console.log("[ConsentWise AI] 🚫 Button intercept fired:", btn.innerText.slice(0, 40));
         bumpStorageCounter("interceptCount");
 
         showOverlay(() => {
@@ -432,5 +432,5 @@
   setTimeout(scanDOM, 1500);
   setTimeout(scanDOM, 4000);
 
-  console.log("[ConsentGuard AI] 👁️  Observer active. Watching for consent elements…");
+  console.log("[ConsentWise AI] 👁️  Observer active. Watching for consent elements…");
 })();

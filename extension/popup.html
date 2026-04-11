@@ -1,18 +1,22 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>ConsentGuard AI</title>
+  <title>ConsentWise AI</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link
+    href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap"
+    rel="stylesheet">
   <style>
     @property --ring-angle {
       syntax: "<angle>";
       inherits: false;
       initial-value: 8deg;
     }
+
     @property --ring-color {
       syntax: "<color>";
       inherits: false;
@@ -20,19 +24,21 @@
     }
 
     :root {
-      --bg:      #f1f5f9;
+      --bg: #fdfbf5;
       --surface: #ffffff;
-      --line:    rgba(99, 102, 241, 0.12);
-      --text:    #0f172a;
-      --muted:   #64748b;
-      --good:    #16a34a;
-      --warn:    #d97706;
-      --bad:     #dc2626;
-      --accent:  #6366f1;
+      --line: rgba(99, 102, 241, 0.12);
+      --text: #0f172a;
+      --muted: #64748b;
+      --good: #16a34a;
+      --warn: #d97706;
+      --bad: #dc2626;
+      --accent: #6366f1;
       --accent2: #0ea5e9;
     }
 
-    * { box-sizing: border-box; }
+    * {
+      box-sizing: border-box;
+    }
 
     body {
       margin: 0;
@@ -40,26 +46,26 @@
       min-height: 620px;
       color: var(--text);
       font-family: "Space Grotesk", sans-serif;
-      background:
-        radial-gradient(ellipse at top left,  rgba(99, 102, 241, 0.08), transparent 42%),
-        radial-gradient(ellipse at top right, rgba(14, 165, 233, 0.06), transparent 38%),
-        var(--bg);
+      background: var(--bg);
     }
 
-    .shell { padding: 14px; }
+    .shell {
+      padding: 0;
+    }
 
     /* ── Cards ────────────────────────────────────────────────────────── */
     .hero,
     .section,
     .stat {
       background: var(--surface);
-      border: 1px solid var(--line);
-      box-shadow: 0 2px 12px rgba(99, 102, 241, 0.07), 0 1px 3px rgba(0,0,0,0.05);
+      border: none;
+      border-bottom: 1px solid var(--line);
+      box-shadow: none;
     }
 
     .hero {
-      border-radius: 22px;
-      padding: 16px;
+      border-radius: 0;
+      padding: 24px 20px;
       position: relative;
       overflow: hidden;
     }
@@ -68,10 +74,12 @@
     .hero::before {
       content: "";
       position: absolute;
-      top: 0; left: 0; right: 0;
+      top: 0;
+      left: 0;
+      right: 0;
       height: 3px;
       background: linear-gradient(90deg, var(--accent), var(--accent2));
-      border-radius: 22px 22px 0 0;
+      border-radius: 0;
     }
 
     .hero::after {
@@ -197,7 +205,7 @@
       border-radius: 50%;
       background: #ffffff;
       border: 1px solid rgba(99, 102, 241, 0.08);
-      box-shadow: inset 0 1px 4px rgba(0,0,0,0.04);
+      box-shadow: inset 0 1px 4px rgba(0, 0, 0, 0.04);
     }
 
     .meter-value,
@@ -287,14 +295,21 @@
     .stats {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
-      gap: 8px;
-      margin-top: 10px;
+      gap: 0;
+      margin-top: 0;
+      border-bottom: 1px solid var(--line);
     }
 
     .stat {
-      border-radius: 16px;
-      padding: 10px;
+      border-radius: 0;
+      padding: 16px 10px;
       text-align: center;
+      border-bottom: none;
+      border-right: 1px solid var(--line);
+    }
+
+    .stat:last-child {
+      border-right: none;
     }
 
     .stat strong {
@@ -314,9 +329,9 @@
 
     /* ── Sections ─────────────────────────────────────────────────────── */
     .section {
-      margin-top: 10px;
-      border-radius: 18px;
-      padding: 13px;
+      margin-top: 0;
+      border-radius: 0;
+      padding: 24px 20px;
     }
 
     .section-title {
@@ -376,7 +391,8 @@
     .actions {
       display: grid;
       gap: 8px;
-      margin-top: 12px;
+      margin-top: 0;
+      padding: 24px 20px;
     }
 
     button {
@@ -390,9 +406,19 @@
       transition: transform 0.16s ease, box-shadow 0.16s ease, opacity 0.16s ease;
     }
 
-    button:hover   { transform: translateY(-1px); }
-    button:active  { transform: scale(0.98); }
-    button:disabled { cursor: not-allowed; opacity: 0.45; transform: none; }
+    button:hover {
+      transform: translateY(-1px);
+    }
+
+    button:active {
+      transform: scale(0.98);
+    }
+
+    button:disabled {
+      cursor: not-allowed;
+      opacity: 0.45;
+      transform: none;
+    }
 
     .primary-btn {
       padding: 13px 16px;
@@ -424,7 +450,7 @@
       padding-top: 12px;
       border-top: 1px solid var(--line);
     }
-    
+
     .tts-select {
       flex: 1;
       padding: 8px 12px;
@@ -505,7 +531,8 @@
 
     /* ── Footer ───────────────────────────────────────────────────────── */
     .footer-note {
-      margin-top: 10px;
+      margin-top: 0;
+      padding: 0 20px 24px;
       color: var(--muted);
       font-size: 10.5px;
       text-align: center;
@@ -703,6 +730,7 @@
     .doc-status.loading { color: var(--accent); }
   </style>
 </head>
+
 <body>
   <main class="shell">
     <section class="hero">
@@ -710,8 +738,10 @@
         <div class="brand">
           <div class="shield">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-              <path d="M12 2L4 6V12C4 16.8 7.2 20.9 12 22C16.8 20.9 20 16.8 20 12V6L12 2Z" fill="url(#shieldGradient)" />
-              <path d="M8.8 12.2L10.9 14.3L15.6 9.6" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+              <path d="M12 2L4 6V12C4 16.8 7.2 20.9 12 22C16.8 20.9 20 16.8 20 12V6L12 2Z"
+                fill="url(#shieldGradient)" />
+              <path d="M8.8 12.2L10.9 14.3L15.6 9.6" stroke="white" stroke-width="1.8" stroke-linecap="round"
+                stroke-linejoin="round" />
               <defs>
                 <linearGradient id="shieldGradient" x1="4" y1="2" x2="20" y2="22" gradientUnits="userSpaceOnUse">
                   <stop offset="0%" stop-color="#6366f1" />
@@ -721,8 +751,8 @@
             </svg>
           </div>
           <div>
-            <div class="eyebrow">ConsentGuard AI</div>
-            <div class="title">Website Safety Scan</div>
+            <div class="eyebrow">ConsentWise AI</div>
+            <div class="title">Policy Reader</div>
           </div>
         </div>
         <div class="status-pill">Protection On</div>
@@ -787,7 +817,8 @@
         <h2 class="section-title">Page Summary</h2>
         <div class="section-meta" id="analysis-meta">Waiting for scan</div>
       </div>
-      <div class="summary-box" id="analysis-summary">Analyze a page with terms, sign-in, consent, or payment language to populate this summary.</div>
+      <div class="summary-box" id="analysis-summary">Analyze a page with terms, sign-in, consent, or payment language to
+        populate this summary.</div>
       <div class="tts-controls" id="tts-controls" style="display: none;">
         <select id="tts-lang" class="tts-select">
           <option value="en-IN">Indian English</option>
@@ -822,10 +853,12 @@
         <div class="section-meta" id="chat-meta">AI Assistant</div>
       </div>
       <div class="chat-window" id="chat-window">
-        <div class="chat-message chat-ai">Ask me anything about this agreement. You can ask in English, Hindi, or any supported Indian language!</div>
+        <div class="chat-message chat-ai">Ask me anything about this agreement. You can ask in English, Hindi, or any
+          supported Indian language!</div>
       </div>
       <div class="chat-input-row">
-        <select id="chat-lang" class="tts-select" style="max-width: 95px; text-overflow: ellipsis; white-space: nowrap; overflow: hidden; padding: 0 8px;">
+        <select id="chat-lang" class="tts-select"
+          style="max-width: 95px; text-overflow: ellipsis; white-space: nowrap; overflow: hidden; padding: 0 8px;">
           <option value="en-IN">Eng (IN)</option>
           <option value="hi-IN">Hindi</option>
           <option value="mr-IN">Marathi</option>
@@ -839,7 +872,9 @@
         </select>
         <input type="text" id="chat-input" placeholder="Type your question..." autocomplete="off" />
         <button id="chat-send-btn" class="primary-btn chat-send-btn">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" fill="currentColor"/></svg>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+            <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" fill="currentColor" />
+          </svg>
         </button>
       </div>
     </section>
@@ -927,4 +962,5 @@
 
   <script src="popup.js"></script>
 </body>
+
 </html>
