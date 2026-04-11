@@ -630,6 +630,19 @@
       box-shadow: 0 10px 24px rgba(239, 68, 68, 0.3);
     }
 
+    .chat-mic-btn.recording {
+      color: #ffffff;
+      background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+      border-color: transparent;
+      box-shadow: 0 10px 28px rgba(239, 68, 68, 0.45);
+      animation: mic-pulse 1.1s ease-in-out infinite;
+    }
+
+    @keyframes mic-pulse {
+      0%, 100% { box-shadow: 0 10px 28px rgba(239, 68, 68, 0.45); transform: scale(1); }
+      50%       { box-shadow: 0 10px 38px rgba(239, 68, 68, 0.7);  transform: scale(1.06); }
+    }
+
     .chat-mic-btn:disabled {
       background: #f8fafc;
       border-color: #e2e8f0;

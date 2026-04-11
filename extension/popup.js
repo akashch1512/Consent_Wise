@@ -595,15 +595,26 @@ function appendMessage(role, text) {
   chatWindow.scrollTop = chatWindow.scrollHeight;
 }
 
-function setMicState(listening) {
-  isListening = listening;
+function setMicState(state) {
+  // state: false | true | "recording"
+  isListening = !!state;
 
   if (!chatMicBtn) return;
 
-  chatMicBtn.classList.toggle("listening", listening);
+  chatMicBtn.classList.toggle("listening", !!state);
+  chatMicBtn.classList.toggle("recording", state === "recording");
   chatMicBtn.disabled = false;
-  chatMicBtn.title = listening ? "Stop listening" : "Speak your question";
-  chatMicBtn.setAttribute("aria-label", listening ? "Stop listening" : "Speak your question");
+
+  if (state === "recording") {
+    chatMicBtn.title = "Recording… click to stop";
+    chatMicBtn.setAttribute("aria-label", "Recording — click to stop");
+  } else if (state) {
+    chatMicBtn.title = "Stop listening";
+    chatMicBtn.setAttribute("aria-label", "Stop listening");
+  } else {
+    chatMicBtn.title = "Speak your question";
+    chatMicBtn.setAttribute("aria-label", "Speak your question");
+  }
 }
 
 function stopSpeechRecognition() {
@@ -621,14 +632,16 @@ function setupSpeechRecognition() {
 
     if (message.type === "stt-started") {
       speechBaseValue = chatInput.value.trim();
-      setMicState(true);
+      setMicState("recording");  // show pulsing red state while recording
     }
 
     if (message.type === "stt-result") {
       const spokenText = message.transcript;
-      chatInput.value = [speechBaseValue, spokenText]
-        .filter(Boolean)
-        .join(speechBaseValue && spokenText ? " " : "");
+      if (spokenText) {
+        chatInput.value = [speechBaseValue, spokenText]
+          .filter(Boolean)
+          .join(speechBaseValue && spokenText ? " " : "");
+      }
     }
 
     if (message.type === "stt-error") {
@@ -636,13 +649,17 @@ function setupSpeechRecognition() {
       if (message.error === "not-allowed") {
         appendMessage(
           "model",
-          "Microphone access was denied. Please click the 🔒 lock icon in Chrome's address bar, set Microphone to \"Allow\", then try again."
+          "🎤 Microphone access was denied. Please go to chrome://extensions, find ConsentWise AI, click \"Details\", then allow the Microphone permission. Reload the extension after."
         );
       } else if (message.error === "not-supported") {
-        chatMicBtn.disabled = true;
-        chatMicBtn.title = "Speech input is not supported";
+        if (chatMicBtn) {
+          chatMicBtn.disabled = true;
+          chatMicBtn.title = "Speech input is not supported in this browser";
+        }
+      } else if (message.error === "network") {
+        appendMessage("model", "⚠️ Could not reach the transcription server. Make sure the backend is running and try again.");
       } else if (message.error !== "no-speech" && message.error !== "aborted") {
-        appendMessage("model", "Speech input is unavailable right now. Please try again.");
+        appendMessage("model", "Speech input encountered an error. Please try again.");
       }
     }
 
@@ -658,10 +675,9 @@ function setupSpeechRecognition() {
       return;
     }
 
-    // Tell background to start offscreen speech recognition
-    setMicState(true); // optimistic — offscreen will confirm via stt-started
+    // Optimistic UI — offscreen confirms via stt-started
     chatMicBtn.disabled = true;
-    chatMicBtn.title = "Starting...";
+    chatMicBtn.title = "Starting…";
 
     chrome.runtime.sendMessage({
       type: "stt-start",
@@ -671,7 +687,7 @@ function setupSpeechRecognition() {
       chatInput.focus();
     }).catch(() => {
       setMicState(false);
-      appendMessage("model", "I couldn't start speech input. Please try again.");
+      appendMessage("model", "Couldn't start audio capture. Make sure the backend is running.");
     });
   });
 }
