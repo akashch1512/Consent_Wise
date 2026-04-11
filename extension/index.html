@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ConsentGuard AI</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <main class="popup-shell">
+    <section class="app-card">
+      <div class="card-glow card-glow-left" aria-hidden="true"></div>
+      <div class="card-glow card-glow-right" aria-hidden="true"></div>
+
+      <header class="hero">
+        <div class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none">
+            <path d="M12 2L4.5 5.6V11.2C4.5 15.8 7.5 20 12 21.2C16.5 20 19.5 15.8 19.5 11.2V5.6L12 2Z" fill="url(#brandGradient)" />
+            <path d="M9.25 11.9L11.1 13.75L14.9 9.95" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+            <defs>
+              <linearGradient id="brandGradient" x1="4.5" y1="2" x2="19.5" y2="21.2" gradientUnits="userSpaceOnUse">
+                <stop offset="0%" stop-color="#1d4ed8" />
+                <stop offset="100%" stop-color="#38bdf8" />
+              </linearGradient>
+            </defs>
+          </svg>
+        </div>
+        <div class="hero-copy">
+          <p class="eyebrow">ConsentGuard AI</p>
+          <h1>Financial document image analysis</h1>
+          <p class="hero-text">
+            Upload a JPG or PNG to extract content and get a simplified, trust-focused summary.
+          </p>
+        </div>
+      </header>
+
+      <section class="panel upload-panel">
+        <div class="panel-head">
+          <div>
+            <p class="panel-kicker">Step 1</p>
+            <h2>Upload Document</h2>
+          </div>
+          <span class="panel-badge">JPG / PNG</span>
+        </div>
+
+        <label class="dropzone" id="dropzone" for="image-input">
+          <input id="image-input" type="file" accept="image/png,image/jpeg,.png,.jpg,.jpeg" hidden />
+          <div class="dropzone-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none">
+              <path d="M12 16V7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+              <path d="M8.5 10.5L12 7L15.5 10.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+              <path d="M6.25 17.75H17.75" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+            </svg>
+          </div>
+          <div class="dropzone-copy">
+            <strong>Drag and drop your image</strong>
+            <span>or click to browse from your device</span>
+          </div>
+        </label>
+
+        <div class="file-meta" id="file-meta">
+          <span class="file-name" id="file-name">No image selected</span>
+          <span class="file-type-note">Maximum clarity gives better extraction</span>
+        </div>
+      </section>
+
+      <section class="panel preview-panel">
+        <div class="panel-head">
+          <div>
+            <p class="panel-kicker">Step 2</p>
+            <h2>Preview</h2>
+          </div>
+          <button class="text-button" id="remove-image" type="button" disabled>Remove</button>
+        </div>
+
+        <div class="preview-frame empty" id="preview-frame">
+          <img id="preview-image" alt="Uploaded document preview" />
+          <div class="preview-placeholder" id="preview-placeholder">
+            <span class="placeholder-title">Image preview will appear here</span>
+            <span class="placeholder-copy">We keep the original aspect ratio for quick verification before analysis.</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel action-panel">
+        <div class="panel-head compact">
+          <div>
+            <p class="panel-kicker">Step 3</p>
+            <h2>Process Image</h2>
+          </div>
+        </div>
+
+        <div class="action-row">
+          <button class="primary-button" id="analyze-button" type="button" disabled>
+            <span class="button-label">Analyze Document</span>
+            <span class="spinner" id="analyze-spinner" aria-hidden="true"></span>
+          </button>
+          <button class="secondary-button" id="clear-button" type="button">Clear</button>
+        </div>
+
+        <div class="status-banner" id="status-banner" role="status" aria-live="polite"></div>
+      </section>
+
+      <section class="panel response-panel">
+        <div class="panel-head">
+          <div>
+            <p class="panel-kicker">Step 4</p>
+            <h2>Analysis Result</h2>
+          </div>
+          <span class="panel-badge neutral" id="result-badge">Waiting</span>
+        </div>
+
+        <div class="response-grid">
+          <article class="response-card">
+            <div class="response-card-head">
+              <h3>Extracted Text</h3>
+            </div>
+            <div class="response-body prose-block" id="extracted-text">
+              Upload and analyze an image to view extracted content here.
+            </div>
+          </article>
+
+          <article class="response-card">
+            <div class="response-card-head">
+              <h3>Simplified Explanation</h3>
+            </div>
+            <div class="response-body prose-block" id="summary-text">
+              A simplified explanation will appear here after the backend responds.
+            </div>
+          </article>
+        </div>
+      </section>
+    </section>
+  </main>
+
+  <script src="script.js"></script>
+</body>
+</html>

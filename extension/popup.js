@@ -647,3 +647,166 @@ footerLink.addEventListener("click", (event) => {
 loadStats();
 setAnalysisState({});
 restoreLatestAnalysis();
+
+// ── Document / Image Upload Feature ───────────────────────────────────────────
+
+(function initDocUpload() {
+  const VISION_API_URL = `${BACKEND_URL}/api/analyze-document`;
+
+  const dropZone      = document.getElementById("drop-zone");
+  const fileInput     = document.getElementById("doc-file-input");
+  const filePreview   = document.getElementById("doc-file-preview");
+  const previewImg    = document.getElementById("doc-preview-img");
+  const fileNameEl    = document.getElementById("doc-file-name");
+  const docStatus     = document.getElementById("doc-status");
+  const analyzeBtn    = document.getElementById("doc-analyze-btn");
+  const docResults    = document.getElementById("doc-results");
+  const docSummary    = document.getElementById("doc-summary");
+  const docKeyPoints  = document.getElementById("doc-key-points");
+  const docRisks      = document.getElementById("doc-risks");
+  const docHint       = document.getElementById("doc-hint");
+  const docIntent     = document.getElementById("doc-intent");
+  const extractedText = document.getElementById("doc-extracted-text");
+  const extractedToggle = document.getElementById("doc-extracted-toggle");
+
+  let selectedFile = null;
+
+  // ── Drag-and-drop visual feedback ──────────────────────────────────
+  dropZone.addEventListener("dragover", (e) => {
+    e.preventDefault();
+    dropZone.classList.add("drag-over");
+  });
+
+  dropZone.addEventListener("dragleave", () => {
+    dropZone.classList.remove("drag-over");
+  });
+
+  dropZone.addEventListener("drop", (e) => {
+    e.preventDefault();
+    dropZone.classList.remove("drag-over");
+    const file = e.dataTransfer.files[0];
+    if (file) handleFileSelected(file);
+  });
+
+  // ── File input change ───────────────────────────────────────────────
+  fileInput.addEventListener("change", () => {
+    const file = fileInput.files[0];
+    if (file) handleFileSelected(file);
+  });
+
+  // ── Handle a selected file ──────────────────────────────────────────
+  function handleFileSelected(file) {
+    const ALLOWED = ["image/jpeg","image/png","image/webp","image/heic","image/heif","application/pdf"];
+    if (!ALLOWED.includes(file.type)) {
+      setStatus("Unsupported file type. Use JPG, PNG, WEBP, HEIC, or PDF.", "error");
+      return;
+    }
+    if (file.size > 20 * 1024 * 1024) {
+      setStatus("File too large (max 20 MB).", "error");
+      return;
+    }
+
+    selectedFile = file;
+    setStatus("");
+
+    // Reset previous results
+    docResults.classList.remove("visible");
+
+    // Show file name
+    fileNameEl.textContent = file.name;
+    filePreview.style.display = "block";
+
+    // Show image preview or PDF icon
+    if (file.type.startsWith("image/")) {
+      const reader = new FileReader();
+      reader.onload = (e) => { previewImg.src = e.target.result; previewImg.style.display = "block"; };
+      reader.readAsDataURL(file);
+    } else {
+      previewImg.style.display = "none";
+    }
+
+    analyzeBtn.disabled = false;
+  }
+
+  // ── Analyze button click ────────────────────────────────────────────
+  analyzeBtn.addEventListener("click", async () => {
+    if (!selectedFile) return;
+
+    analyzeBtn.disabled = true;
+    analyzeBtn.textContent = "Analyzing…";
+    setStatus("Sending to Vision AI — this may take a few seconds…", "loading");
+    docResults.classList.remove("visible");
+
+    try {
+      const formData = new FormData();
+      formData.append("file", selectedFile);
+
+      const response = await fetch(VISION_API_URL, {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!response.ok) {
+        let detail = `Error ${response.status}`;
+        try { const j = await response.json(); detail = j.detail || detail; } catch (_) {}
+        throw new Error(detail);
+      }
+
+      const data = await response.json();
+      renderResults(data);
+      setStatus("");
+    } catch (err) {
+      setStatus(`Analysis failed: ${err.message}`, "error");
+    } finally {
+      analyzeBtn.disabled = false;
+      analyzeBtn.textContent = "Analyze Document";
+    }
+  });
+
+  // ── Render analysis results ─────────────────────────────────────────
+  function renderResults(data) {
+    docSummary.textContent = data.summary || "—";
+
+    renderList(docKeyPoints, data.key_points || [], false);
+    renderList(docRisks,    data.risks      || [], true);
+
+    docHint.textContent   = data.accessibility_hint || "—";
+    docIntent.textContent = data.intent             || "—";
+
+    extractedText.textContent = data.extracted_text || "—";
+    extractedText.classList.remove("open");
+    extractedToggle.textContent = "Show raw text ▾";
+
+    docResults.classList.add("visible");
+
+    // Scroll section into view
+    docResults.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }
+
+  function renderList(ulEl, items, isRisk) {
+    ulEl.innerHTML = "";
+    if (!items.length) {
+      const li = document.createElement("li");
+      li.textContent = isRisk ? "No notable risks found." : "None listed.";
+      ulEl.appendChild(li);
+      return;
+    }
+    items.forEach((text) => {
+      const li = document.createElement("li");
+      li.textContent = text;
+      ulEl.appendChild(li);
+    });
+  }
+
+  // ── Extracted text toggle ───────────────────────────────────────────
+  extractedToggle.addEventListener("click", () => {
+    const open = extractedText.classList.toggle("open");
+    extractedToggle.textContent = open ? "Hide raw text ▴" : "Show raw text ▾";
+  });
+
+  // ── Status helper ───────────────────────────────────────────────────
+  function setStatus(msg, type = "") {
+    docStatus.textContent = msg;
+    docStatus.className   = "doc-status" + (type ? ` ${type}` : "");
+  }
+})();
