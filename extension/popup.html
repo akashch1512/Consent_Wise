@@ -108,6 +108,7 @@
       display: flex;
       align-items: center;
       gap: 10px;
+      min-width: 0;
     }
 
     .shield {
@@ -135,6 +136,14 @@
       color: var(--text);
     }
 
+    .hero-tools {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-left: auto;
+      flex-shrink: 0;
+    }
+
     /* ── Pills / badges / chips ───────────────────────────────────────── */
     .status-pill,
     .badge,
@@ -153,11 +162,60 @@
       border: 1px solid #bbf7d0;
     }
 
+    .status-pill.off {
+      color: #64748b;
+      background: #f1f5f9;
+      border-color: #dbe4ee;
+    }
+
+    .toggle-pill {
+      position: relative;
+      width: 52px;
+      height: 30px;
+      border-radius: 999px;
+      border: 1px solid #dbe4ee;
+      background: #e2e8f0;
+      cursor: pointer;
+      transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+      box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.06);
+      flex-shrink: 0;
+    }
+
+    .toggle-pill::after {
+      content: "";
+      position: absolute;
+      top: 3px;
+      left: 3px;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: #ffffff;
+      box-shadow: 0 4px 10px rgba(15, 23, 42, 0.16);
+      transition: transform 0.2s ease;
+    }
+
+    .toggle-pill.is-on {
+      background: linear-gradient(135deg, #6366f1 0%, #0ea5e9 100%);
+      border-color: rgba(99, 102, 241, 0.3);
+      box-shadow: 0 8px 20px rgba(99, 102, 241, 0.22);
+    }
+
+    .toggle-pill.is-on::after {
+      transform: translateX(22px);
+    }
+
     .hero-copy {
       margin: 10px 0 0;
       color: var(--muted);
-      font-size: 12.5px;
-      line-height: 1.55;
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    .hero-actions {
+      display: grid;
+      grid-template-columns: 1.3fr 0.9fr;
+      gap: 10px;
+      margin-top: 16px;
     }
 
     /* ── Meter grid ───────────────────────────────────────────────────── */
@@ -171,7 +229,7 @@
     .meter-card {
       padding: 12px;
       border-radius: 18px;
-      background: #f8fafc;
+      background: linear-gradient(180deg, #fbfdff 0%, #f8fafc 100%);
       border: 1px solid rgba(99, 102, 241, 0.1);
       text-align: center;
     }
@@ -249,7 +307,7 @@
       margin-top: 12px;
       padding: 10px 13px;
       border-radius: 16px;
-      background: #f8fafc;
+      background: linear-gradient(180deg, #fbfdff 0%, #f8fafc 100%);
       border: 1px solid rgba(99, 102, 241, 0.1);
     }
 
@@ -294,7 +352,7 @@
     /* ── Stats ────────────────────────────────────────────────────────── */
     .stats {
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
+      grid-template-columns: repeat(2, 1fr);
       gap: 0;
       margin-top: 0;
       border-bottom: 1px solid var(--line);
@@ -331,12 +389,12 @@
     .section {
       margin-top: 0;
       border-radius: 0;
-      padding: 24px 20px;
+      padding: 20px;
     }
 
     .section-title {
       margin: 0;
-      font-size: 14px;
+      font-size: 13px;
       color: var(--text);
     }
 
@@ -351,9 +409,9 @@
     .reputation-box,
     .list-item {
       margin-top: 8px;
-      padding: 10px 12px;
-      border-radius: 12px;
-      background: #f8fafc;
+      padding: 11px 12px;
+      border-radius: 14px;
+      background: linear-gradient(180deg, #fbfdff 0%, #f8fafc 100%);
       border: 1px solid rgba(99, 102, 241, 0.08);
     }
 
@@ -392,7 +450,7 @@
       display: grid;
       gap: 8px;
       margin-top: 0;
-      padding: 24px 20px;
+      padding: 20px;
     }
 
     button {
@@ -440,6 +498,19 @@
 
     .secondary-btn:hover {
       background: #e8edf5;
+    }
+
+    .action-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      min-height: 48px;
+    }
+
+    .compact-btn {
+      width: 100%;
+      min-height: 48px;
     }
 
     /* ── TTS Controls ─────────────────────────────────────────────────── */
@@ -585,10 +656,10 @@
     .drop-zone {
       margin-top: 10px;
       border: 2px dashed rgba(99, 102, 241, 0.3);
-      border-radius: 14px;
+      border-radius: 18px;
       padding: 18px 12px;
       text-align: center;
-      background: #f8fafc;
+      background: linear-gradient(180deg, #fbfdff 0%, #f8fafc 100%);
       cursor: pointer;
       transition: border-color 0.2s, background 0.2s;
       position: relative;
@@ -633,7 +704,7 @@
 
     .file-preview {
       margin-top: 10px;
-      border-radius: 12px;
+      border-radius: 16px;
       overflow: hidden;
       display: none;
       border: 1px solid rgba(99, 102, 241, 0.12);
@@ -677,8 +748,8 @@
 
     .doc-result-block {
       padding: 10px 12px;
-      border-radius: 12px;
-      background: #f8fafc;
+      border-radius: 14px;
+      background: linear-gradient(180deg, #fbfdff 0%, #f8fafc 100%);
       border: 1px solid rgba(99, 102, 241, 0.08);
     }
 
@@ -758,12 +829,50 @@
       margin-top: 8px;
       font-size: 11.5px;
       color: var(--muted);
-      text-align: center;
+      text-align: left;
       min-height: 18px;
     }
 
     .doc-status.error { color: var(--bad); }
     .doc-status.loading { color: var(--accent); }
+
+    .quick-upload {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      padding: 14px;
+      border-radius: 18px;
+      background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+      border: 1px solid rgba(99, 102, 241, 0.1);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+    }
+
+    .quick-upload-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .quick-upload-title {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .quick-upload-meta {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    .quick-upload-actions {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 10px;
+    }
 
     /* ── Welcome Screen ───────────────────────────────────────────────── */
     .welcome-shell {
@@ -1125,12 +1234,18 @@
             <div class="title">Policy Reader</div>
           </div>
         </div>
-        <div class="status-pill">Protection On</div>
+        <div class="hero-tools">
+          <div class="status-pill" id="protection-label">Protection On</div>
+          <button class="toggle-pill is-on" id="protection-toggle" type="button" aria-label="Toggle protection" aria-pressed="true"></button>
+        </div>
       </div>
 
-      <p class="hero-copy">
-        Analyze the current page to get a clean danger score, website reputation score, and login safety guidance.
-      </p>
+      <p class="hero-copy">Scan the current page or upload a document for a quick, readable safety check.</p>
+
+      <div class="hero-actions">
+        <button class="primary-btn action-btn compact-btn" id="analyze-current">Analyze This Page</button>
+        <button class="secondary-btn action-btn compact-btn" id="open-latest" disabled>Open Latest Report</button>
+      </div>
 
       <div class="meter-grid">
         <div class="meter-card">
@@ -1170,15 +1285,88 @@
     <section class="stats">
       <div class="stat">
         <strong id="stat-blocked">0</strong>
-        <span>Intercepted</span>
+        <span>Protected</span>
       </div>
       <div class="stat">
         <strong id="stat-tabs">0</strong>
         <span>Analyzed</span>
       </div>
-      <div class="stat">
-        <strong>Live</strong>
-        <span>Mode</span>
+    </section>
+
+    <section class="section" id="doc-upload-section">
+      <div class="section-head">
+        <h2 class="section-title">Document / Image</h2>
+        <div class="section-meta">Dashboard Tool</div>
+      </div>
+
+      <div class="quick-upload">
+        <div class="quick-upload-head">
+          <div class="quick-upload-title">Upload to analyze</div>
+          <div class="quick-upload-meta">Vision AI</div>
+        </div>
+
+        <div class="drop-zone" id="drop-zone">
+          <input type="file" id="doc-file-input" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,application/pdf" />
+          <div class="drop-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 13H9l3-7 3 7h-2v2h-2v-2zm1-9.5c.83 0 1.5.67 1.5 1.5S12.83 8.5 12 8.5 10.5 7.83 10.5 7s.67-1.5 1.5-1.5z" fill="url(#uploadGradient)"/>
+              <defs>
+                <linearGradient id="uploadGradient" x1="2" y1="2" x2="22" y2="22" gradientUnits="userSpaceOnUse">
+                  <stop offset="0%" stop-color="#6366f1"/>
+                  <stop offset="100%" stop-color="#0ea5e9"/>
+                </linearGradient>
+              </defs>
+            </svg>
+          </div>
+          <div class="drop-label">Drop image or PDF here</div>
+          <div class="drop-hint">Or click to browse</div>
+        </div>
+
+        <div class="file-preview" id="doc-file-preview">
+          <img id="doc-preview-img" src="" alt="Preview" />
+          <div class="file-name-bar" id="doc-file-name">-</div>
+        </div>
+
+        <div class="doc-status" id="doc-status"></div>
+
+        <div class="quick-upload-actions">
+          <button class="primary-btn action-btn" id="doc-analyze-btn" disabled>Analyze Document</button>
+        </div>
+      </div>
+
+      <div class="doc-results" id="doc-results">
+
+        <div class="doc-result-block">
+          <div class="doc-result-label">Summary</div>
+          <div class="doc-result-text" id="doc-summary"></div>
+        </div>
+
+        <div class="doc-result-block">
+          <div class="doc-result-label">Key Points</div>
+          <ul class="doc-list" id="doc-key-points"></ul>
+        </div>
+
+        <div class="doc-result-block">
+          <div class="doc-result-label">Risks</div>
+          <ul class="doc-list risk" id="doc-risks"></ul>
+        </div>
+
+        <div class="doc-result-block">
+          <div class="doc-result-label">Accessibility Hint</div>
+          <div class="doc-result-text" id="doc-hint"></div>
+        </div>
+
+        <div class="doc-result-block">
+          <div class="doc-result-label">Document Intent</div>
+          <div class="doc-result-text" id="doc-intent"></div>
+        </div>
+
+        <div class="doc-result-block">
+          <div class="doc-result-label">Extracted Text</div>
+          <button class="doc-extracted-toggle" id="doc-extracted-toggle">Show raw text ▾</button>
+          <div class="doc-extracted-text" id="doc-extracted-text"></div>
+        </div>
+
       </div>
     </section>
 
@@ -1256,86 +1444,6 @@
         </button>
       </div>
     </section>
-
-    <!-- ── Document / Image Analyzer ─────────────────────────────────── -->
-    <section class="section" id="doc-upload-section">
-      <div class="section-head">
-        <h2 class="section-title">Analyze Document / Image</h2>
-        <div class="section-meta">Vision AI</div>
-      </div>
-
-      <div class="drop-zone" id="drop-zone">
-        <input type="file" id="doc-file-input" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,application/pdf" />
-        <div class="drop-icon">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 13H9l3-7 3 7h-2v2h-2v-2zm1-9.5c.83 0 1.5.67 1.5 1.5S12.83 8.5 12 8.5 10.5 7.83 10.5 7s.67-1.5 1.5-1.5z" fill="url(#uploadGradient)"/>
-            <defs>
-              <linearGradient id="uploadGradient" x1="2" y1="2" x2="22" y2="22" gradientUnits="userSpaceOnUse">
-                <stop offset="0%" stop-color="#6366f1"/>
-                <stop offset="100%" stop-color="#0ea5e9"/>
-              </linearGradient>
-            </defs>
-          </svg>
-        </div>
-        <div class="drop-label">Drop image or PDF here</div>
-        <div class="drop-hint">or click to browse · JPG, PNG, WEBP, HEIC, PDF</div>
-      </div>
-
-      <div class="file-preview" id="doc-file-preview">
-        <img id="doc-preview-img" src="" alt="Preview" />
-        <div class="file-name-bar" id="doc-file-name">—</div>
-      </div>
-
-      <div class="doc-status" id="doc-status"></div>
-
-      <button class="primary-btn" id="doc-analyze-btn" disabled>Analyze Document</button>
-
-      <div class="doc-results" id="doc-results">
-
-        <div class="doc-result-block">
-          <div class="doc-result-label">Summary</div>
-          <div class="doc-result-text" id="doc-summary"></div>
-        </div>
-
-        <div class="doc-result-block">
-          <div class="doc-result-label">Key Points</div>
-          <ul class="doc-list" id="doc-key-points"></ul>
-        </div>
-
-        <div class="doc-result-block">
-          <div class="doc-result-label">⚠ Risks &amp; Obligations</div>
-          <ul class="doc-list risk" id="doc-risks"></ul>
-        </div>
-
-        <div class="doc-result-block">
-          <div class="doc-result-label">Accessibility Hint</div>
-          <div class="doc-result-text" id="doc-hint"></div>
-        </div>
-
-        <div class="doc-result-block">
-          <div class="doc-result-label">Document Intent</div>
-          <div class="doc-result-text" id="doc-intent"></div>
-        </div>
-
-        <div class="doc-result-block">
-          <div class="doc-result-label">Extracted Text</div>
-          <button class="doc-extracted-toggle" id="doc-extracted-toggle">Show raw text ▾</button>
-          <div class="doc-extracted-text" id="doc-extracted-text"></div>
-        </div>
-
-      </div>
-    </section>
-
-    <section class="actions">
-      <button class="primary-btn" id="analyze-current">Analyze Current Page</button>
-      <button class="secondary-btn" id="open-latest" disabled>Open Latest Report</button>
-      <button class="secondary-btn" id="open-dashboard">Open Login / Dashboard App</button>
-    </section>
-
-    <div class="footer-note">
-      Local app pages stay excluded from interception so your login flow keeps working.
-      <a href="http://localhost:3000" id="footer-link">Open app</a>
-    </div>
   </main>
 
   <script src="popup.js"></script>

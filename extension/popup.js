@@ -13,12 +13,12 @@ const TRUSTED_APP_ORIGINS = new Set([
   "http://127.0.0.1:8000",
 ]);
 
-const openDashboardBtn = document.getElementById("open-dashboard");
 const openLatestBtn = document.getElementById("open-latest");
 const analyzeCurrentBtn = document.getElementById("analyze-current");
-const footerLink = document.getElementById("footer-link");
 const statBlocked = document.getElementById("stat-blocked");
 const statTabs = document.getElementById("stat-tabs");
+const protectionToggle = document.getElementById("protection-toggle");
+const protectionLabel = document.getElementById("protection-label");
 const dangerRing = document.getElementById("danger-ring");
 const dangerValue = document.getElementById("danger-value");
 const dangerTitle = document.getElementById("danger-title");
@@ -50,6 +50,29 @@ let chatHistory = [];
 let latestOriginalText = "";
 let isListening = false;
 let speechBaseValue = "";
+
+function applyProtectionUI(enabled) {
+  if (!protectionToggle || !protectionLabel) return;
+  protectionToggle.classList.toggle("is-on", enabled);
+  protectionToggle.setAttribute("aria-pressed", enabled ? "true" : "false");
+  protectionLabel.classList.toggle("off", !enabled);
+  protectionLabel.textContent = enabled ? "Protection On" : "Protection Off";
+}
+
+function loadProtectionState() {
+  chrome.storage.local.get(["protectionEnabled"], (data) => {
+    applyProtectionUI(data.protectionEnabled !== false);
+  });
+}
+
+function toggleProtection() {
+  chrome.storage.local.get(["protectionEnabled"], (data) => {
+    const next = data.protectionEnabled === false;
+    chrome.storage.local.set({ protectionEnabled: next }, () => {
+      applyProtectionUI(next);
+    });
+  });
+}
 
 // Speech-to-text is handled via an offscreen document (Chrome MV3)
 // to work around the popup's sandbox restrictions on mic access.
@@ -392,7 +415,9 @@ function renderAnalysis(data, sourceMeta) {
 }
 
 async function analyzeCurrentTab() {
+  const originalLabel = analyzeCurrentBtn ? analyzeCurrentBtn.textContent : "Analyze This Page";
   analyzeCurrentBtn.disabled = true;
+  analyzeCurrentBtn.textContent = "Analyzing...";
   setAnalysisState({
     meta: "Preparing scan",
     loading: true,
@@ -429,6 +454,10 @@ async function analyzeCurrentTab() {
       }),
     });
 
+    if (!response) {
+      throw new Error("No response from analysis service.");
+    }
+
     const data = await response.json().catch(() => ({}));
     if (!response.ok) {
       throw new Error(data.detail || "Backend analysis failed.");
@@ -449,18 +478,29 @@ async function analyzeCurrentTab() {
       loadStats();
     });
   } catch (error) {
-    console.warn("[ConsentWise Popup] Analysis failed:", error.message);
+    const rawMessage = (error && error.message ? error.message : "Analysis failed.").trim();
+    let message = rawMessage;
+
+    if (/Failed to fetch|NetworkError|fetch/i.test(rawMessage)) {
+      message = "Could not reach the local backend at http://localhost:8000. Start the backend server, then try again.";
+    } else if (/Cannot access contents of url|Cannot access a chrome:|Missing host permission/i.test(rawMessage)) {
+      message = "This tab cannot be scanned right now. Refresh the page or switch to a normal website tab.";
+    }
+
+    console.warn("[ConsentWise Popup] Analysis failed:", message);
     setAnalysisState({
       meta: "Scan blocked",
       intent: "Unavailable",
-      summary: error.message,
+      summary: message,
       reputation: "No reputation scan could be completed.",
       reputationExamples: [],
       loginSafety: "Caution",
       loginSafetyText: "The site could not be analyzed yet.",
     });
+    alert(message);
   } finally {
     analyzeCurrentBtn.disabled = false;
+    analyzeCurrentBtn.textContent = originalLabel;
   }
 }
 
@@ -617,62 +657,64 @@ function setupSpeechRecognition() {
   });
 }
 
-chatSendBtn.addEventListener("click", async () => {
-  const text = chatInput.value.trim();
-  if (!text) return;
+if (chatSendBtn && chatInput && chatWindow) {
+  chatSendBtn.addEventListener("click", async () => {
+    const text = chatInput.value.trim();
+    if (!text) return;
 
-  stopSpeechRecognition();
-  
-  appendMessage("user", text);
-  chatInput.value = "";
-  speechBaseValue = "";
-  chatSendBtn.disabled = true;
-
-  const thinkingDiv = document.createElement("div");
-  thinkingDiv.className = "chat-message chat-ai";
-  thinkingDiv.textContent = "Thinking...";
-  chatWindow.appendChild(thinkingDiv);
-  chatWindow.scrollTop = chatWindow.scrollHeight;
-
-  let currentLang = "Indian English";
-  if (chatLang && chatLang.options) {
-    currentLang = chatLang.options[chatLang.selectedIndex].text;
-  }
-  const questionWithLang = `[Please answer in ${currentLang}] ${text}`;
-
-  try {
-    const res = await fetch(`${BACKEND_URL}/api/chat`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        document_context: latestOriginalText || analysisSummary.textContent,
-        question: questionWithLang,
-        history: chatHistory
-      })
-    });
+    stopSpeechRecognition();
     
-    if (!res.ok) throw new Error("Chat failed.");
-    const data = await res.json();
-    chatHistory.push({ role: "user", text: questionWithLang });
-    chatHistory.push({ role: "model", text: data.answer });
-    
-    chatWindow.removeChild(thinkingDiv);
-    appendMessage("model", data.answer);
-  } catch (err) {
-    chatWindow.removeChild(thinkingDiv);
-    appendMessage("model", "Sorry, I couldn't process your request right now.");
-  } finally {
-    chatSendBtn.disabled = false;
-  }
-});
+    appendMessage("user", text);
+    chatInput.value = "";
+    speechBaseValue = "";
+    chatSendBtn.disabled = true;
 
-chatInput.addEventListener("keypress", (e) => {
-  if (e.key === "Enter") chatSendBtn.click();
-});
+    const thinkingDiv = document.createElement("div");
+    thinkingDiv.className = "chat-message chat-ai";
+    thinkingDiv.textContent = "Thinking...";
+    chatWindow.appendChild(thinkingDiv);
+    chatWindow.scrollTop = chatWindow.scrollHeight;
+
+    let currentLang = "Indian English";
+    if (chatLang && chatLang.options) {
+      currentLang = chatLang.options[chatLang.selectedIndex].text;
+    }
+    const questionWithLang = `[Please answer in ${currentLang}] ${text}`;
+
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/chat`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          document_context: latestOriginalText || analysisSummary.textContent,
+          question: questionWithLang,
+          history: chatHistory
+        })
+      });
+      
+      if (!res.ok) throw new Error("Chat failed.");
+      const data = await res.json();
+      chatHistory.push({ role: "user", text: questionWithLang });
+      chatHistory.push({ role: "model", text: data.answer });
+      
+      chatWindow.removeChild(thinkingDiv);
+      appendMessage("model", data.answer);
+    } catch (err) {
+      chatWindow.removeChild(thinkingDiv);
+      appendMessage("model", "Sorry, I couldn't process your request right now.");
+    } finally {
+      chatSendBtn.disabled = false;
+    }
+  });
+
+  chatInput.addEventListener("keypress", (e) => {
+    if (e.key === "Enter") chatSendBtn.click();
+  });
+}
 
 if (chatLang) {
   chatLang.addEventListener("change", () => {
-    if (speechRecognition && isListening) {
+    if (isListening) {
       stopSpeechRecognition();
     }
     if (chatLang.value === "hi-IN" || chatLang.value === "mr-IN") {
@@ -686,7 +728,8 @@ if (chatLang) {
 }
 
 let isPlaying = false;
-ttsPlayBtn.addEventListener("click", async () => {
+if (ttsPlayBtn) {
+  ttsPlayBtn.addEventListener("click", async () => {
   if (isPlaying) {
     ttsAudio.pause();
     isPlaying = false;
@@ -729,17 +772,15 @@ ttsPlayBtn.addEventListener("click", async () => {
     ttsPlayBtn.disabled = false;
     if (!isPlaying) ttsPlayBtn.textContent = "Listen";
   }
-});
+  });
+}
 
-openDashboardBtn.addEventListener("click", openDashboard);
-openLatestBtn.addEventListener("click", openLatestReport);
-analyzeCurrentBtn.addEventListener("click", analyzeCurrentTab);
-footerLink.addEventListener("click", (event) => {
-  event.preventDefault();
-  openDashboard();
-});
+if (protectionToggle) protectionToggle.addEventListener("click", toggleProtection);
+if (openLatestBtn) openLatestBtn.addEventListener("click", openLatestReport);
+if (analyzeCurrentBtn) analyzeCurrentBtn.addEventListener("click", analyzeCurrentTab);
 
 loadStats();
+loadProtectionState();
 setAnalysisState({});
 restoreLatestAnalysis();
 setupSpeechRecognition();
