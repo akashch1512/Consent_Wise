@@ -102,7 +102,7 @@ function openLatestReport() {
     openUrl(data.latestDashboardUrl || FALLBACK_REPORT_URL);
   });
 }
-
+// hello
 function getDangerTheme(score) {
   if (score >= 75) {
     return {
@@ -215,9 +215,9 @@ function sanitizeAnalysisPayload(data) {
   const summary = extractLikelySummary(data.summary || "");
   const keyPoints = Array.isArray(data.key_points)
     ? data.key_points
-        .map((item) => extractLikelySummary(item))
-        .filter(Boolean)
-        .filter((item) => !looksLikeRawEnvelope(item))
+      .map((item) => extractLikelySummary(item))
+      .filter(Boolean)
+      .filter((item) => !looksLikeRawEnvelope(item))
     : [];
 
   return {
@@ -280,7 +280,7 @@ function setAnalysisState({
   setLoginSafety(loginSafety, loginSafetyText);
   renderPointList(summaryPoints, keyPoints, "No key points extracted yet.", "chip");
   renderPointList(reputationExamples, badExamples, "No verified bad history was identified from this analysis.", "list-item");
-  
+
   if (summary && summary !== "Analyze a page with terms, sign-in, consent, or payment language to populate this summary.") {
     ttsControls.style.display = "flex";
     chatSection.style.display = "block";
@@ -564,7 +564,7 @@ function setMicState(listening) {
 
 function stopSpeechRecognition() {
   if (isListening) {
-    chrome.runtime.sendMessage({ type: "stt-stop" }).catch(() => {});
+    chrome.runtime.sendMessage({ type: "stt-stop" }).catch(() => { });
   }
 }
 
@@ -637,7 +637,7 @@ chatSendBtn.addEventListener("click", async () => {
   if (!text) return;
 
   stopSpeechRecognition();
-  
+
   appendMessage("user", text);
   chatInput.value = "";
   speechBaseValue = "";
@@ -665,12 +665,12 @@ chatSendBtn.addEventListener("click", async () => {
         history: chatHistory
       })
     });
-    
+
     if (!res.ok) throw new Error("Chat failed.");
     const data = await res.json();
     chatHistory.push({ role: "user", text: questionWithLang });
     chatHistory.push({ role: "model", text: data.answer });
-    
+
     chatWindow.removeChild(thinkingDiv);
     appendMessage("model", data.answer);
   } catch (err) {
@@ -708,13 +708,13 @@ ttsPlayBtn.addEventListener("click", async () => {
     ttsPlayBtn.textContent = "Listen";
     return;
   }
-  
+
   const textToSay = analysisSummary.textContent;
   if (!textToSay || textToSay.includes("Analyze a page")) return;
-  
+
   ttsPlayBtn.disabled = true;
   ttsPlayBtn.textContent = "Loading...";
-  
+
   try {
     const res = await fetch(`${BACKEND_URL}/api/tts`, {
       method: "POST",
@@ -725,14 +725,14 @@ ttsPlayBtn.addEventListener("click", async () => {
         voice_name: "Kore"
       })
     });
-    
+
     if (!res.ok) throw new Error("TTS failed");
     const data = await res.json();
     ttsAudio.src = `data:${data.mime_type};base64,${data.audio_base64}`;
     await ttsAudio.play();
     isPlaying = true;
     ttsPlayBtn.textContent = "Stop";
-    
+
     ttsAudio.onended = () => {
       isPlaying = false;
       ttsPlayBtn.textContent = "Listen";
@@ -769,12 +769,12 @@ function renderQuizQuestion(index) {
     quizNextBtn.style.display = "none";
     return;
   }
-  
+
   const q = currentQuizData[index];
   quizQuestionText.textContent = `Q${index + 1}: ${q.question}`;
   quizOptA.textContent = `A) ${q.option_a}`;
   quizOptB.textContent = `B) ${q.option_b}`;
-  
+
   // Reset states
   quizOptA.style.display = "block";
   quizOptB.style.display = "block";
@@ -782,12 +782,12 @@ function renderQuizQuestion(index) {
   quizOptA.style.background = "#fff";
   quizOptA.style.color = "#334155";
   quizOptA.disabled = false;
-  
+
   quizOptB.style.borderColor = "#e2e8f0";
   quizOptB.style.background = "#fff";
   quizOptB.style.color = "#334155";
   quizOptB.disabled = false;
-  
+
   quizExplanationBox.style.display = "none";
   quizNextBtn.style.display = "none";
 }
@@ -795,10 +795,10 @@ function renderQuizQuestion(index) {
 function handleQuizAnswer(selectedOpt, btnEl) {
   const q = currentQuizData[currentQuizIndex];
   const isCorrect = (selectedOpt === q.correct_option);
-  
+
   quizOptA.disabled = true;
   quizOptB.disabled = true;
-  
+
   if (isCorrect) {
     btnEl.style.borderColor = "#16a34a";
     btnEl.style.background = "#dcfce7";
@@ -807,14 +807,14 @@ function handleQuizAnswer(selectedOpt, btnEl) {
     btnEl.style.borderColor = "#dc2626";
     btnEl.style.background = "#fee2e2";
     btnEl.style.color = "#991b1b";
-    
+
     const correctBtn = (q.correct_option === "A") ? quizOptA : quizOptB;
     correctBtn.style.borderColor = "#16a34a";
   }
-  
+
   quizExplanationBox.textContent = q.explanation;
   quizExplanationBox.style.display = "block";
-  
+
   if (currentQuizIndex < currentQuizData.length - 1) {
     quizNextBtn.style.display = "block";
   } else {
@@ -830,7 +830,7 @@ if (quizGenerateBtn) {
       alert("Please analyze a document first!");
       return;
     }
-    
+
     quizContainer.style.display = "flex";
     quizQuestionText.textContent = "Loading engaging quiz locally formatted for you...";
     quizOptA.style.display = "none";
@@ -839,7 +839,7 @@ if (quizGenerateBtn) {
     quizNextBtn.style.display = "none";
     quizGenerateBtn.disabled = true;
     quizGenerateBtn.textContent = "Generating...";
-    
+
     try {
       const res = await fetch(`${BACKEND_URL}/api/generate-quiz`, {
         method: "POST",
@@ -850,7 +850,7 @@ if (quizGenerateBtn) {
         })
       });
       if (!res.ok) throw new Error("Quiz generation failed.");
-      
+
       const data = await res.json();
       if (data && data.questions && data.questions.length > 0) {
         currentQuizData = data.questions;
@@ -898,19 +898,19 @@ setupSpeechRecognition();
 (function initDocUpload() {
   const VISION_API_URL = `${BACKEND_URL}/api/analyze-document`;
 
-  const dropZone      = document.getElementById("drop-zone");
-  const fileInput     = document.getElementById("doc-file-input");
-  const filePreview   = document.getElementById("doc-file-preview");
-  const previewImg    = document.getElementById("doc-preview-img");
-  const fileNameEl    = document.getElementById("doc-file-name");
-  const docStatus     = document.getElementById("doc-status");
-  const analyzeBtn    = document.getElementById("doc-analyze-btn");
-  const docResults    = document.getElementById("doc-results");
-  const docSummary    = document.getElementById("doc-summary");
-  const docKeyPoints  = document.getElementById("doc-key-points");
-  const docRisks      = document.getElementById("doc-risks");
-  const docHint       = document.getElementById("doc-hint");
-  const docIntent     = document.getElementById("doc-intent");
+  const dropZone = document.getElementById("drop-zone");
+  const fileInput = document.getElementById("doc-file-input");
+  const filePreview = document.getElementById("doc-file-preview");
+  const previewImg = document.getElementById("doc-preview-img");
+  const fileNameEl = document.getElementById("doc-file-name");
+  const docStatus = document.getElementById("doc-status");
+  const analyzeBtn = document.getElementById("doc-analyze-btn");
+  const docResults = document.getElementById("doc-results");
+  const docSummary = document.getElementById("doc-summary");
+  const docKeyPoints = document.getElementById("doc-key-points");
+  const docRisks = document.getElementById("doc-risks");
+  const docHint = document.getElementById("doc-hint");
+  const docIntent = document.getElementById("doc-intent");
   const extractedText = document.getElementById("doc-extracted-text");
   const extractedToggle = document.getElementById("doc-extracted-toggle");
 
@@ -941,7 +941,7 @@ setupSpeechRecognition();
 
   // ── Handle a selected file ──────────────────────────────────────────
   function handleFileSelected(file) {
-    const ALLOWED = ["image/jpeg","image/png","image/webp","image/heic","image/heif","application/pdf"];
+    const ALLOWED = ["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif", "application/pdf"];
     if (!ALLOWED.includes(file.type)) {
       setStatus("Unsupported file type. Use JPG, PNG, WEBP, HEIC, or PDF.", "error");
       return;
@@ -993,7 +993,7 @@ setupSpeechRecognition();
 
       if (!response.ok) {
         let detail = `Error ${response.status}`;
-        try { const j = await response.json(); detail = j.detail || detail; } catch (_) {}
+        try { const j = await response.json(); detail = j.detail || detail; } catch (_) { }
         throw new Error(detail);
       }
 
@@ -1013,10 +1013,10 @@ setupSpeechRecognition();
     docSummary.textContent = data.summary || "—";
 
     renderList(docKeyPoints, data.key_points || [], false);
-    renderList(docRisks,    data.risks      || [], true);
+    renderList(docRisks, data.risks || [], true);
 
-    docHint.textContent   = data.accessibility_hint || "—";
-    docIntent.textContent = data.intent             || "—";
+    docHint.textContent = data.accessibility_hint || "—";
+    docIntent.textContent = data.intent || "—";
 
     extractedText.textContent = data.extracted_text || "—";
     extractedText.classList.remove("open");
@@ -1052,7 +1052,7 @@ setupSpeechRecognition();
   // ── Status helper ───────────────────────────────────────────────────
   function setStatus(msg, type = "") {
     docStatus.textContent = msg;
-    docStatus.className   = "doc-status" + (type ? ` ${type}` : "");
+    docStatus.className = "doc-status" + (type ? ` ${type}` : "");
   }
 })();
 
@@ -1095,7 +1095,7 @@ setupSpeechRecognition();
       chip.addEventListener("click", () => {
         // Toggle this chip
         chip.classList.toggle("selected");
-        
+
         // If they select "Equal Importance", maybe deselect others, but for a dummy form it's fine just to toggle.
         if (chip.textContent === "Equal Importance" && chip.classList.contains("selected")) {
           chips.forEach(c => { if (c !== chip) c.classList.remove("selected"); });
