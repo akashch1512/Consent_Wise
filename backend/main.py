@@ -7,6 +7,7 @@ app = FastAPI(
     version="0.1.0",
 )
 
+# Mount the Gemini summarization API router at /api
 app.include_router(router)
 
 @app.get("/health")
