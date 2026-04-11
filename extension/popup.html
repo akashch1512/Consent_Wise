@@ -16,19 +16,20 @@
     @property --ring-color {
       syntax: "<color>";
       inherits: false;
-      initial-value: #38bdf8;
+      initial-value: #6366f1;
     }
 
     :root {
-      --bg: #07111f;
-      --card: rgba(11, 20, 35, 0.88);
-      --line: rgba(148, 163, 184, 0.14);
-      --text: #eff6ff;
-      --muted: #94a3b8;
-      --good: #22c55e;
-      --warn: #f59e0b;
-      --bad: #ef4444;
-      --cool: #38bdf8;
+      --bg:      #f1f5f9;
+      --surface: #ffffff;
+      --line:    rgba(99, 102, 241, 0.12);
+      --text:    #0f172a;
+      --muted:   #64748b;
+      --good:    #16a34a;
+      --warn:    #d97706;
+      --bad:     #dc2626;
+      --accent:  #6366f1;
+      --accent2: #0ea5e9;
     }
 
     * { box-sizing: border-box; }
@@ -40,43 +41,54 @@
       color: var(--text);
       font-family: "Space Grotesk", sans-serif;
       background:
-        radial-gradient(circle at top left, rgba(56, 189, 248, 0.26), transparent 34%),
-        radial-gradient(circle at top right, rgba(239, 68, 68, 0.18), transparent 30%),
-        linear-gradient(180deg, #0a1528 0%, #040a14 100%);
+        radial-gradient(ellipse at top left,  rgba(99, 102, 241, 0.08), transparent 42%),
+        radial-gradient(ellipse at top right, rgba(14, 165, 233, 0.06), transparent 38%),
+        var(--bg);
     }
 
-    .shell { padding: 16px; }
+    .shell { padding: 14px; }
 
+    /* ── Cards ────────────────────────────────────────────────────────── */
     .hero,
     .section,
     .stat {
-      background: var(--card);
+      background: var(--surface);
       border: 1px solid var(--line);
-      box-shadow: 0 18px 40px rgba(0, 0, 0, 0.25);
+      box-shadow: 0 2px 12px rgba(99, 102, 241, 0.07), 0 1px 3px rgba(0,0,0,0.05);
     }
 
     .hero {
-      border-radius: 24px;
-      padding: 18px;
+      border-radius: 22px;
+      padding: 16px;
       position: relative;
       overflow: hidden;
+    }
+
+    /* Subtle top accent bar */
+    .hero::before {
+      content: "";
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
+      border-radius: 22px 22px 0 0;
     }
 
     .hero::after {
       content: "";
       position: absolute;
-      right: -32px;
-      bottom: -48px;
-      width: 140px;
-      height: 140px;
+      right: -24px;
+      bottom: -36px;
+      width: 120px;
+      height: 120px;
       border-radius: 50%;
-      background: radial-gradient(circle, rgba(34, 197, 94, 0.2), transparent 68%);
+      background: radial-gradient(circle, rgba(99, 102, 241, 0.08), transparent 70%);
       pointer-events: none;
     }
 
+    /* ── Brand row ────────────────────────────────────────────────────── */
     .brand-row,
     .section-head,
-    .stat-row,
     .login-strip {
       display: flex;
       align-items: center;
@@ -87,99 +99,105 @@
     .brand {
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: 10px;
     }
 
     .shield {
-      width: 42px;
-      height: 42px;
-      border-radius: 14px;
+      width: 40px;
+      height: 40px;
+      border-radius: 12px;
       display: grid;
       place-items: center;
-      background: linear-gradient(135deg, rgba(56, 189, 248, 0.2), rgba(34, 197, 94, 0.18));
-      border: 1px solid rgba(125, 211, 252, 0.16);
+      background: linear-gradient(135deg, #ede9fe, #dbeafe);
+      border: 1px solid rgba(99, 102, 241, 0.2);
     }
 
     .eyebrow {
-      font-size: 11px;
+      font-size: 10px;
       text-transform: uppercase;
       letter-spacing: 0.14em;
-      color: #7dd3fc;
-    }
-
-    .title {
-      margin-top: 3px;
-      font-size: 22px;
+      color: var(--accent);
       font-weight: 700;
     }
 
+    .title {
+      margin-top: 2px;
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    /* ── Pills / badges / chips ───────────────────────────────────────── */
     .status-pill,
     .badge,
     .chip {
       border-radius: 999px;
-      font-size: 11px;
+      font-size: 10px;
       font-weight: 700;
       letter-spacing: 0.06em;
       text-transform: uppercase;
     }
 
     .status-pill {
-      padding: 8px 12px;
-      color: #86efac;
-      background: rgba(34, 197, 94, 0.14);
-      border: 1px solid rgba(34, 197, 94, 0.2);
+      padding: 6px 11px;
+      color: #16a34a;
+      background: #dcfce7;
+      border: 1px solid #bbf7d0;
     }
 
     .hero-copy {
-      margin: 12px 0 0;
+      margin: 10px 0 0;
       color: var(--muted);
-      font-size: 13px;
+      font-size: 12.5px;
       line-height: 1.55;
     }
 
+    /* ── Meter grid ───────────────────────────────────────────────────── */
     .meter-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 12px;
-      margin-top: 16px;
+      gap: 10px;
+      margin-top: 14px;
     }
 
     .meter-card {
-      padding: 14px;
-      border-radius: 20px;
-      background: rgba(255, 255, 255, 0.03);
-      border: 1px solid rgba(255, 255, 255, 0.05);
+      padding: 12px;
+      border-radius: 18px;
+      background: #f8fafc;
+      border: 1px solid rgba(99, 102, 241, 0.1);
       text-align: center;
     }
 
     .meter-label {
       color: var(--muted);
-      font-size: 11px;
+      font-size: 10px;
       text-transform: uppercase;
       letter-spacing: 0.12em;
+      font-weight: 700;
     }
 
     .meter-ring {
       position: relative;
-      width: 108px;
-      height: 108px;
-      margin: 10px auto 0;
+      width: 104px;
+      height: 104px;
+      margin: 8px auto 0;
       border-radius: 50%;
       display: grid;
       place-items: center;
       transition: --ring-angle 0.7s cubic-bezier(0.34, 1.56, 0.64, 1), --ring-color 0.5s ease;
       background:
-        radial-gradient(circle at center, #08111d 58%, transparent 59%),
-        conic-gradient(var(--ring-color) 0 var(--ring-angle), rgba(148, 163, 184, 0.16) var(--ring-angle) 360deg);
+        radial-gradient(circle at center, #ffffff 58%, transparent 59%),
+        conic-gradient(var(--ring-color) 0 var(--ring-angle), #e2e8f0 var(--ring-angle) 360deg);
     }
 
     .meter-ring::after {
       content: "";
       position: absolute;
-      inset: 15px;
+      inset: 14px;
       border-radius: 50%;
-      background: #08111d;
-      border: 1px solid rgba(255,255,255,0.05);
+      background: #ffffff;
+      border: 1px solid rgba(99, 102, 241, 0.08);
+      box-shadow: inset 0 1px 4px rgba(0,0,0,0.04);
     }
 
     .meter-value,
@@ -189,118 +207,127 @@
     }
 
     .meter-value {
-      font-size: 30px;
+      font-size: 28px;
       font-weight: 700;
       line-height: 1;
+      color: var(--text);
     }
 
     .meter-caption {
-      margin-top: 4px;
+      margin-top: 3px;
       color: var(--muted);
-      font-size: 10px;
+      font-size: 9px;
       text-transform: uppercase;
       letter-spacing: 0.08em;
     }
 
     .meter-title {
-      margin-top: 10px;
-      font-size: 16px;
+      margin-top: 8px;
+      font-size: 13px;
       font-weight: 700;
+      color: var(--text);
     }
 
     .meter-copy {
-      margin-top: 6px;
+      margin-top: 4px;
       color: var(--muted);
-      font-size: 12px;
+      font-size: 11px;
       line-height: 1.5;
-      min-height: 36px;
+      min-height: 32px;
     }
 
+    /* ── Login strip ──────────────────────────────────────────────────── */
     .login-strip {
-      margin-top: 14px;
-      padding: 12px 14px;
-      border-radius: 18px;
-      background: rgba(255, 255, 255, 0.04);
-      border: 1px solid rgba(255, 255, 255, 0.06);
+      margin-top: 12px;
+      padding: 10px 13px;
+      border-radius: 16px;
+      background: #f8fafc;
+      border: 1px solid rgba(99, 102, 241, 0.1);
     }
 
     .login-label {
       color: var(--muted);
-      font-size: 11px;
+      font-size: 10px;
       text-transform: uppercase;
       letter-spacing: 0.12em;
-    }
-
-    .login-value {
-      margin-top: 4px;
-      font-size: 16px;
       font-weight: 700;
     }
 
+    .login-value {
+      margin-top: 3px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text);
+    }
+
     .badge {
-      padding: 8px 10px;
+      padding: 6px 10px;
       border: 1px solid transparent;
     }
 
     .badge.safe {
-      color: #86efac;
-      background: rgba(34, 197, 94, 0.14);
-      border-color: rgba(34, 197, 94, 0.18);
+      color: #15803d;
+      background: #dcfce7;
+      border-color: #bbf7d0;
     }
 
     .badge.caution {
-      color: #fcd34d;
-      background: rgba(245, 158, 11, 0.14);
-      border-color: rgba(245, 158, 11, 0.18);
+      color: #b45309;
+      background: #fef3c7;
+      border-color: #fde68a;
     }
 
     .badge.unsafe {
-      color: #fca5a5;
-      background: rgba(239, 68, 68, 0.14);
-      border-color: rgba(239, 68, 68, 0.18);
+      color: #b91c1c;
+      background: #fee2e2;
+      border-color: #fecaca;
     }
 
+    /* ── Stats ────────────────────────────────────────────────────────── */
     .stats {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
-      gap: 10px;
-      margin-top: 12px;
+      gap: 8px;
+      margin-top: 10px;
     }
 
     .stat {
-      border-radius: 18px;
-      padding: 12px;
+      border-radius: 16px;
+      padding: 10px;
       text-align: center;
     }
 
     .stat strong {
       display: block;
-      font-size: 22px;
+      font-size: 20px;
+      color: var(--accent);
     }
 
     .stat span {
       display: block;
-      margin-top: 4px;
+      margin-top: 3px;
       color: var(--muted);
-      font-size: 11px;
+      font-size: 10px;
       text-transform: uppercase;
       letter-spacing: 0.08em;
     }
 
+    /* ── Sections ─────────────────────────────────────────────────────── */
     .section {
-      margin-top: 12px;
-      border-radius: 20px;
-      padding: 14px;
+      margin-top: 10px;
+      border-radius: 18px;
+      padding: 13px;
     }
 
     .section-title {
       margin: 0;
-      font-size: 15px;
+      font-size: 14px;
+      color: var(--text);
     }
 
     .section-meta {
       color: var(--muted);
-      font-size: 10px;
+      font-size: 9.5px;
       text-transform: uppercase;
       letter-spacing: 0.1em;
     }
@@ -308,51 +335,54 @@
     .summary-box,
     .reputation-box,
     .list-item {
-      margin-top: 10px;
-      padding: 12px;
-      border-radius: 16px;
-      background: rgba(255, 255, 255, 0.03);
-      border: 1px solid rgba(255, 255, 255, 0.05);
+      margin-top: 8px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      background: #f8fafc;
+      border: 1px solid rgba(99, 102, 241, 0.08);
     }
 
     .summary-box,
     .reputation-box {
-      font-size: 13px;
+      font-size: 12.5px;
       line-height: 1.6;
-      color: #e2e8f0;
+      color: #334155;
     }
 
     .chip-row,
     .list {
       display: grid;
-      gap: 8px;
-      margin-top: 10px;
+      gap: 7px;
+      margin-top: 8px;
     }
 
     .chip {
       display: inline-flex;
       width: fit-content;
-      padding: 6px 10px;
-      color: #c9f3ff;
-      background: rgba(125, 211, 252, 0.08);
-      border: 1px solid rgba(125, 211, 252, 0.12);
+      padding: 5px 10px;
+      color: #4338ca;
+      background: #eef2ff;
+      border: 1px solid #c7d2fe;
+      font-size: 11px;
     }
 
     .list-item {
-      font-size: 12.5px;
+      font-size: 12px;
       line-height: 1.55;
+      color: #334155;
     }
 
+    /* ── Buttons ──────────────────────────────────────────────────────── */
     .actions {
       display: grid;
-      gap: 10px;
-      margin-top: 14px;
+      gap: 8px;
+      margin-top: 12px;
     }
 
     button {
       appearance: none;
       border: none;
-      border-radius: 14px;
+      border-radius: 13px;
       font-family: inherit;
       font-size: 13px;
       font-weight: 700;
@@ -360,35 +390,45 @@
       transition: transform 0.16s ease, box-shadow 0.16s ease, opacity 0.16s ease;
     }
 
-    button:hover { transform: translateY(-1px); }
-    button:active { transform: scale(0.98); }
-    button:disabled { cursor: not-allowed; opacity: 0.55; transform: none; }
+    button:hover   { transform: translateY(-1px); }
+    button:active  { transform: scale(0.98); }
+    button:disabled { cursor: not-allowed; opacity: 0.45; transform: none; }
 
     .primary-btn {
-      padding: 14px 16px;
-      color: #04101d;
-      background: linear-gradient(135deg, #7dd3fc 0%, #4ade80 100%);
-      box-shadow: 0 12px 28px rgba(56, 189, 248, 0.18);
+      padding: 13px 16px;
+      color: #ffffff;
+      background: linear-gradient(135deg, #6366f1 0%, #0ea5e9 100%);
+      box-shadow: 0 4px 18px rgba(99, 102, 241, 0.28);
+    }
+
+    .primary-btn:hover {
+      box-shadow: 0 6px 24px rgba(99, 102, 241, 0.38);
     }
 
     .secondary-btn {
-      padding: 13px 16px;
-      color: var(--text);
-      background: rgba(255, 255, 255, 0.04);
-      border: 1px solid rgba(255, 255, 255, 0.08);
+      padding: 12px 16px;
+      color: #475569;
+      background: #f1f5f9;
+      border: 1px solid #e2e8f0;
     }
 
+    .secondary-btn:hover {
+      background: #e8edf5;
+    }
+
+    /* ── Footer ───────────────────────────────────────────────────────── */
     .footer-note {
-      margin-top: 12px;
+      margin-top: 10px;
       color: var(--muted);
-      font-size: 11px;
+      font-size: 10.5px;
       text-align: center;
       line-height: 1.5;
     }
 
     .footer-note a {
-      color: #7dd3fc;
+      color: var(--accent);
       text-decoration: none;
+      font-weight: 600;
     }
   </style>
 </head>
@@ -403,8 +443,8 @@
               <path d="M8.8 12.2L10.9 14.3L15.6 9.6" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
               <defs>
                 <linearGradient id="shieldGradient" x1="4" y1="2" x2="20" y2="22" gradientUnits="userSpaceOnUse">
-                  <stop offset="0%" stop-color="#38BDF8" />
-                  <stop offset="100%" stop-color="#22C55E" />
+                  <stop offset="0%" stop-color="#6366f1" />
+                  <stop offset="100%" stop-color="#0ea5e9" />
                 </linearGradient>
               </defs>
             </svg>

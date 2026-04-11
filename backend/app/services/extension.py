@@ -210,240 +210,168 @@ def build_dashboard_html(analysis_id: str) -> str:
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>ConsentGuard AI Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet" />
   <style>
-    :root {{
-      --bg: #07111f;
-      --text: #eff6ff;
-      --muted: #94a3b8;
-      --line: rgba(148, 163, 184, 0.18);
-      --good: #22c55e;
-      --warn: #f59e0b;
-      --bad: #ef4444;
-      --cool: #38bdf8;
+    @property --gauge-angle {{
+      syntax: "<angle>";
+      inherits: false;
+      initial-value: 8deg;
     }}
-    * {{ box-sizing: border-box; }}
+    @property --gauge-color {{
+      syntax: "<color>";
+      inherits: false;
+      initial-value: #6366f1;
+    }}
+    :root {{
+      --bg:      #f1f5f9;
+      --surface: #ffffff;
+      --line:    rgba(99, 102, 241, 0.12);
+      --text:    #0f172a;
+      --muted:   #64748b;
+      --good:    #16a34a;
+      --warn:    #d97706;
+      --bad:     #dc2626;
+      --accent:  #6366f1;
+      --accent2: #0ea5e9;
+    }}
+    * {{ box-sizing: border-box; margin: 0; padding: 0; }}
     body {{
-      margin: 0;
-      font-family: "Segoe UI", Arial, sans-serif;
+      font-family: "Space Grotesk", "Segoe UI", Arial, sans-serif;
       color: var(--text);
       background:
-        radial-gradient(circle at top left, rgba(56, 189, 248, 0.18), transparent 32%),
-        radial-gradient(circle at top right, rgba(239, 68, 68, 0.14), transparent 26%),
+        radial-gradient(ellipse at top left,  rgba(99,102,241,0.07), transparent 45%),
+        radial-gradient(ellipse at top right, rgba(14,165,233,0.05), transparent 40%),
         var(--bg);
       min-height: 100vh;
     }}
-    .shell {{
-      max-width: 1140px;
-      margin: 0 auto;
-      padding: 32px 20px 64px;
-    }}
-    .hero,
-    .grid {{
-      display: grid;
-      gap: 18px;
-    }}
+    .shell {{ max-width: 1160px; margin: 0 auto; padding: 32px 20px 72px; }}
     .hero {{
+      display: grid;
       grid-template-columns: 1.2fr 0.9fr;
+      gap: 18px;
       margin-bottom: 20px;
     }}
-    .grid {{
-      grid-template-columns: 1.3fr 0.9fr;
-    }}
-    .hero-card,
-    .meter-shell,
-    .card {{
-      background: linear-gradient(180deg, rgba(16,26,45,0.98), rgba(10,18,31,0.98));
+    .hero-card, .meter-shell, .card {{
+      background: var(--surface);
       border: 1px solid var(--line);
-      border-radius: 24px;
-      padding: 22px;
-      box-shadow: 0 20px 45px rgba(0, 0, 0, 0.24);
+      border-radius: 22px;
+      padding: 24px;
+      box-shadow: 0 2px 14px rgba(99,102,241,0.07), 0 1px 4px rgba(0,0,0,0.04);
+    }}
+    .hero-card {{ position: relative; overflow: hidden; }}
+    .hero-card::before {{
+      content: "";
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
+      border-radius: 22px 22px 0 0;
     }}
     .eyebrow {{
-      color: var(--cool);
-      font-size: 12px;
+      color: var(--accent);
+      font-size: 11px;
       font-weight: 700;
       text-transform: uppercase;
       letter-spacing: 0.12em;
     }}
-    h1 {{
-      margin: 10px 0 8px;
-      font-size: 38px;
-      line-height: 1.15;
-    }}
-    .sub {{
-      color: var(--muted);
-      max-width: 720px;
-      line-height: 1.6;
-    }}
-    .pill-row {{
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      margin-top: 18px;
-    }}
+    h1 {{ margin: 10px 0 8px; font-size: 32px; font-weight: 700; line-height: 1.15; }}
+    .sub {{ color: var(--muted); max-width: 680px; line-height: 1.65; font-size: 15px; }}
+    .pill-row {{ display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; }}
     .pill {{
       display: inline-flex;
       align-items: center;
-      gap: 8px;
-      padding: 8px 12px;
+      gap: 6px;
+      padding: 6px 12px;
       border-radius: 999px;
-      font-size: 12px;
+      font-size: 11px;
       font-weight: 700;
       text-transform: uppercase;
-      letter-spacing: 0.08em;
-      background: rgba(255,255,255,0.04);
-      border: 1px solid rgba(255,255,255,0.08);
+      letter-spacing: 0.07em;
+      background: #f1f5f9;
+      border: 1px solid #e2e8f0;
+      color: #334155;
     }}
-    .meter-grid {{
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 14px;
-    }}
+    .pill.high   {{ background: #fee2e2; color: #b91c1c; border-color: #fecaca; }}
+    .pill.medium {{ background: #fef3c7; color: #b45309; border-color: #fde68a; }}
+    .pill.low    {{ background: #dbeafe; color: #1d4ed8; border-color: #bfdbfe; }}
+    .meter-grid {{ display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }}
     .meter-card {{
       padding: 16px;
       border-radius: 18px;
-      background: rgba(255,255,255,0.03);
-      border: 1px solid rgba(255,255,255,0.05);
+      background: #f8fafc;
+      border: 1px solid rgba(99,102,241,0.08);
       text-align: center;
     }}
     .gauge {{
       position: relative;
-      width: 168px;
-      height: 168px;
+      width: 160px;
+      height: 160px;
       margin: 0 auto 10px;
       border-radius: 50%;
       display: grid;
       place-items: center;
+      transition: --gauge-angle 0.7s cubic-bezier(0.34,1.56,0.64,1), --gauge-color 0.5s ease;
       background:
-        radial-gradient(circle at center, #07111f 58%, transparent 59%),
-        conic-gradient(var(--gauge-color) 0 var(--gauge-angle), rgba(148, 163, 184, 0.14) var(--gauge-angle) 360deg);
+        radial-gradient(circle at center, #ffffff 58%, transparent 59%),
+        conic-gradient(var(--gauge-color) 0 var(--gauge-angle), #e2e8f0 var(--gauge-angle) 360deg);
     }}
     .gauge::after {{
       content: "";
       position: absolute;
       inset: 20px;
       border-radius: 50%;
-      background: #07111f;
-      border: 1px solid rgba(255,255,255,0.06);
+      background: #ffffff;
+      border: 1px solid rgba(99,102,241,0.08);
+      box-shadow: inset 0 1px 6px rgba(0,0,0,0.04);
     }}
-    .gauge-inner {{
-      position: relative;
-      z-index: 1;
-    }}
-    .gauge-score {{
-      font-size: 44px;
-      font-weight: 800;
-      line-height: 1;
-      text-align: center;
-    }}
-    .gauge-label {{
-      margin-top: 6px;
-      color: var(--muted);
-      font-size: 12px;
-      text-transform: uppercase;
-      letter-spacing: 0.12em;
-      text-align: center;
-    }}
-    .meter-headline {{
-      font-size: 20px;
-      font-weight: 700;
-    }}
-    .meter-copy {{
-      color: var(--muted);
-      line-height: 1.6;
-      font-size: 14px;
-      min-height: 44px;
-    }}
+    .gauge-inner {{ position: relative; z-index: 1; }}
+    .gauge-score {{ font-size: 42px; font-weight: 800; line-height: 1; text-align: center; color: var(--text); }}
+    .gauge-label {{ margin-top: 6px; color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.12em; text-align: center; }}
+    .meter-headline {{ font-size: 18px; font-weight: 700; color: var(--text); }}
+    .meter-copy {{ color: var(--muted); line-height: 1.6; font-size: 13px; min-height: 40px; margin-top: 4px; }}
     .login-banner {{
-      margin-top: 16px;
+      margin-top: 14px;
       display: flex;
       align-items: center;
       justify-content: space-between;
       gap: 16px;
-      padding: 16px;
-      border-radius: 18px;
-      background: rgba(255,255,255,0.04);
-      border: 1px solid rgba(255,255,255,0.06);
+      padding: 14px 16px;
+      border-radius: 16px;
+      background: #f8fafc;
+      border: 1px solid rgba(99,102,241,0.1);
     }}
-    .login-title {{
-      color: var(--muted);
-      font-size: 12px;
-      text-transform: uppercase;
-      letter-spacing: 0.12em;
-    }}
-    .login-copy {{
-      margin-top: 6px;
-      font-size: 18px;
-      font-weight: 700;
-    }}
+    .login-title {{ color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.12em; font-weight: 700; }}
+    .login-copy  {{ margin-top: 5px; font-size: 16px; font-weight: 700; color: var(--text); }}
     .login-badge {{
-      padding: 10px 14px;
+      padding: 8px 14px;
       border-radius: 999px;
-      font-size: 12px;
+      font-size: 11px;
       font-weight: 700;
       text-transform: uppercase;
-      letter-spacing: 0.08em;
+      letter-spacing: 0.07em;
       border: 1px solid transparent;
+      white-space: nowrap;
     }}
-    .login-badge.safe {{ background: rgba(34,197,94,0.16); color: #86efac; border-color: rgba(34,197,94,0.2); }}
-    .login-badge.caution {{ background: rgba(245,158,11,0.16); color: #fcd34d; border-color: rgba(245,158,11,0.2); }}
-    .login-badge.unsafe {{ background: rgba(239,68,68,0.16); color: #fca5a5; border-color: rgba(239,68,68,0.2); }}
-    .card h2 {{
-      margin: 0 0 12px;
-      font-size: 18px;
-    }}
-    .meta,
-    .risk-list,
-    .list {{
-      display: grid;
-      gap: 12px;
-    }}
-    .meta-row,
-    .risk-item {{
-      padding: 12px;
+    .login-badge.safe    {{ background: #dcfce7; color: #15803d; border-color: #bbf7d0; }}
+    .login-badge.caution {{ background: #fef3c7; color: #b45309; border-color: #fde68a; }}
+    .login-badge.unsafe  {{ background: #fee2e2; color: #b91c1c; border-color: #fecaca; }}
+    .grid {{ display: grid; grid-template-columns: 1.3fr 0.9fr; gap: 18px; }}
+    .card h2 {{ margin: 0 0 14px; font-size: 17px; color: var(--text); }}
+    .meta, .risk-list, .list {{ display: grid; gap: 10px; }}
+    .meta-row, .risk-item {{
+      padding: 12px 14px;
       border-radius: 12px;
-      background: rgba(255,255,255,0.03);
-      border: 1px solid rgba(255,255,255,0.05);
+      background: #f8fafc;
+      border: 1px solid rgba(99,102,241,0.08);
     }}
-    .meta-label {{
-      color: var(--muted);
-      font-size: 12px;
-      margin-bottom: 6px;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-    }}
-    .summary {{
-      font-size: 16px;
-      line-height: 1.7;
-    }}
-    ul {{
-      margin: 0;
-      padding-left: 18px;
-      line-height: 1.8;
-    }}
-    .pill.high {{ background: rgba(239,68,68,0.18); color: #fca5a5; }}
-    .pill.medium {{ background: rgba(245,158,11,0.18); color: #fcd34d; }}
-    .pill.low {{ background: rgba(56,189,248,0.16); color: #7dd3fc; }}
-    pre {{
-      white-space: pre-wrap;
-      word-break: break-word;
-      color: var(--muted);
-      line-height: 1.6;
-      margin: 0;
-      font-family: inherit;
-    }}
-    .empty {{
-      text-align: center;
-      padding: 72px 20px;
-      color: var(--muted);
-    }}
-    @media (max-width: 820px) {{
-      .hero,
-      .grid,
-      .meter-grid {{
-        grid-template-columns: 1fr;
-      }}
-    }}
+    .meta-label {{ color: var(--muted); font-size: 11px; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 700; }}
+    .summary {{ font-size: 15px; line-height: 1.75; color: #334155; }}
+    ul {{ margin: 0; padding-left: 18px; line-height: 1.85; color: #334155; }}
+    pre {{ white-space: pre-wrap; word-break: break-word; color: var(--muted); line-height: 1.6; margin: 0; font-family: inherit; font-size: 13px; }}
+    .empty {{ text-align: center; padding: 72px 20px; color: var(--muted); }}
+    @media (max-width: 820px) {{ .hero, .grid, .meter-grid {{ grid-template-columns: 1fr; }} }}
   </style>
 </head>
 <body>
@@ -458,24 +386,24 @@ def build_dashboard_html(analysis_id: str) -> str:
       <section class="meter-shell">
         <div class="meter-grid">
           <div class="meter-card">
-            <div class="gauge" id="danger-gauge" style="--gauge-angle: 8deg; --gauge-color: var(--cool);">
+            <div class="gauge" id="danger-gauge">
               <div class="gauge-inner">
                 <div class="gauge-score" id="danger-score">--</div>
                 <div class="gauge-label">Danger</div>
               </div>
             </div>
             <div class="meter-headline" id="danger-headline">Preparing report</div>
-            <div class="meter-copy" id="danger-copy">Calculating risk score for the agreement.</div>
+            <div class="meter-copy"    id="danger-copy">Calculating risk score.</div>
           </div>
           <div class="meter-card">
-            <div class="gauge" id="reputation-gauge" style="--gauge-angle: 8deg; --gauge-color: var(--cool);">
+            <div class="gauge" id="reputation-gauge">
               <div class="gauge-inner">
                 <div class="gauge-score" id="reputation-score">--</div>
                 <div class="gauge-label">Reputation</div>
               </div>
             </div>
             <div class="meter-headline" id="reputation-headline">Preparing trust check</div>
-            <div class="meter-copy" id="reputation-copy">Estimating whether this site is safe to trust with a login.</div>
+            <div class="meter-copy"    id="reputation-copy">Estimating site trust for login.</div>
           </div>
         </div>
         <div class="login-banner">
@@ -490,221 +418,123 @@ def build_dashboard_html(analysis_id: str) -> str:
     <div id="app" class="empty">Loading analysis...</div>
   </main>
   <script>
-    function escapeHtml(value) {{
-      return String(value || "")
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#39;");
+    function escapeHtml(v) {{
+      return String(v||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;");
     }}
-
-    function getDangerTheme(score) {{
-      if (score >= 75) {{
-        return {{
-          label: "High danger",
-          color: "#ef4444",
-          copy: "The agreement looks risky or harmful."
-        }};
-      }}
-      if (score >= 40) {{
-        return {{
-          label: "Use caution",
-          color: "#f59e0b",
-          copy: "Some language looks risky or costly."
-        }};
-      }}
-      return {{
-        label: "Lower danger",
-        color: "#22c55e",
-        copy: "No major red flags were detected."
-      }};
+    function getDangerTheme(s) {{
+      if (s>=75) return {{label:"High danger",  color:"#dc2626",copy:"The agreement looks risky or harmful."}};
+      if (s>=40) return {{label:"Use caution",  color:"#d97706",copy:"Some language looks risky or costly."}};
+      return             {{label:"Lower danger", color:"#16a34a",copy:"No major red flags were detected."}};
     }}
-
-    function getReputationTheme(score) {{
-      if (score >= 75) {{
-        return {{
-          label: "Strong reputation",
-          color: "#22c55e",
-          copy: "The site appears more trustworthy overall."
-        }};
-      }}
-      if (score >= 40) {{
-        return {{
-          label: "Mixed reputation",
-          color: "#f59e0b",
-          copy: "This site deserves extra review before login."
-        }};
-      }}
-      return {{
-        label: "Poor reputation",
-        color: "#ef4444",
-        copy: "This site shows concerning trust signals."
-      }};
+    function getReputationTheme(s) {{
+      if (s>=75) return {{label:"Strong reputation",color:"#16a34a",copy:"The site appears more trustworthy overall."}};
+      if (s>=40) return {{label:"Mixed reputation", color:"#d97706",copy:"This site deserves extra review before login."}};
+      return             {{label:"Poor reputation",  color:"#dc2626",copy:"This site shows concerning trust signals."}};
     }}
-
-    function setGauge(id, score, color) {{
-      const gauge = document.getElementById(id);
-      const clamped = Math.max(0, Math.min(100, Number(score || 0)));
-      gauge.style.setProperty("--gauge-angle", `${{Math.max(8, clamped * 3.6)}}deg`);
-      gauge.style.setProperty("--gauge-color", color);
+    function setGauge(id,score,color) {{
+      const g=document.getElementById(id), c=Math.max(0,Math.min(100,Number(score||0)));
+      g.style.setProperty("--gauge-angle",`${{Math.max(8,c*3.6)}}deg`);
+      g.style.setProperty("--gauge-color",color);
     }}
-
-    function getLoginSafetyText(analysis) {{
-      const safety = String(analysis.login_safety || "").toLowerCase();
-      if (safety === "unsafe") {{
-        return "Not safe to log in right now. Avoid entering credentials until the site is verified.";
-      }}
-      if (safety === "safe") {{
-        return "Looks reasonably safe for login, but still verify the domain first.";
-      }}
+    function animateNumber(el,from,to,dur) {{
+      if (!el) return;
+      const t0=performance.now();
+      (function update(now) {{
+        const t=Math.min((now-t0)/dur,1), e=1-Math.pow(1-t,3);
+        el.textContent=Math.round(from+(to-from)*e);
+        if(t<1) requestAnimationFrame(update);
+      }})(t0);
+    }}
+    function loginSafetyText(a) {{
+      const s=String(a.login_safety||"").toLowerCase();
+      if(s==="unsafe") return "Not safe to log in right now. Avoid entering credentials until the site is verified.";
+      if(s==="safe")   return "Looks reasonably safe for login, but still verify the domain first.";
       return "Use caution before logging in. Check the domain and data practices first.";
     }}
-
-    function getLoginBadgeClass(value) {{
-      const safety = String(value || "").toLowerCase();
-      if (safety === "safe") return "safe";
-      if (safety === "unsafe") return "unsafe";
-      return "caution";
+    function badgeClass(v) {{
+      const s=String(v||"").toLowerCase();
+      return s==="safe"?"safe":s==="unsafe"?"unsafe":"caution";
     }}
-
-    function renderList(items, emptyText) {{
-      if (!Array.isArray(items) || !items.length) {{
-        return `<div class="risk-item">${{escapeHtml(emptyText)}}</div>`;
-      }}
-      return items.map((item) => `
-        <div class="risk-item">${{escapeHtml(item)}}</div>
-      `).join("");
+    function renderList(items,empty) {{
+      if(!Array.isArray(items)||!items.length) return `<div class="risk-item">${{escapeHtml(empty)}}</div>`;
+      return items.map(i=>`<div class="risk-item">${{escapeHtml(i)}}</div>`).join("");
     }}
-
-    function renderPointList(items, emptyText) {{
-      if (!Array.isArray(items) || !items.length) {{
-        return `<div class="risk-item">${{escapeHtml(emptyText)}}</div>`;
-      }}
-      return `<ul>${{items.map((item) => `<li>${{escapeHtml(item)}}</li>`).join("")}}</ul>`;
+    function renderPoints(items,empty) {{
+      if(!Array.isArray(items)||!items.length) return `<div class="risk-item">${{escapeHtml(empty)}}</div>`;
+      return `<ul>${{items.map(i=>`<li>${{escapeHtml(i)}}</li>`).join("")}}</ul>`;
     }}
-
     async function loadAnalysis() {{
-      const app = document.getElementById("app");
+      const app=document.getElementById("app");
       try {{
-        const response = await fetch("/api/extension/analysis/{safe_analysis_id}");
-        const data = await response.json();
-        if (!response.ok) {{
-          throw new Error(data.detail || "Could not load analysis.");
-        }}
-
-        document.getElementById("heading").textContent = data.dashboard_heading;
-        document.getElementById("subheading").textContent = data.dashboard_subheading;
-
-        const analysis = data.analysis;
-        const score = Number(analysis.danger_score || 0);
-        const reputationScore = Number(analysis.reputation_score || 0);
-        const dangerTheme = getDangerTheme(score);
-        const reputationTheme = getReputationTheme(reputationScore);
-        setGauge("danger-gauge", score, dangerTheme.color);
-        setGauge("reputation-gauge", reputationScore, reputationTheme.color);
-        document.getElementById("danger-score").textContent = String(score);
-        document.getElementById("reputation-score").textContent = String(reputationScore);
-        document.getElementById("danger-headline").textContent = `${{dangerTheme.label}} · ${{score}}/100`;
-        document.getElementById("danger-copy").textContent = dangerTheme.copy;
-        document.getElementById("reputation-headline").textContent = `${{reputationTheme.label}} · ${{reputationScore}}/100`;
-        document.getElementById("reputation-copy").textContent = reputationTheme.copy;
-        document.getElementById("login-copy").textContent = getLoginSafetyText(analysis);
-        const loginBadge = document.getElementById("login-badge");
-        loginBadge.textContent = escapeHtml(analysis.login_safety || "Caution");
-        loginBadge.className = `login-badge ${{getLoginBadgeClass(analysis.login_safety)}}`;
-        document.getElementById("hero-pills").innerHTML = `
-          <div class="pill">${{dangerTheme.label}}</div>
-          <div class="pill">Reputation ${{reputationScore}}/100</div>
-          <div class="pill">Login ${{escapeHtml(analysis.login_safety || "Caution")}}</div>
-          <div class="pill">${{escapeHtml(analysis.intent || "Unknown intent")}}</div>
-          <div class="pill">${{escapeHtml(analysis.title || "Untitled page")}}</div>
-        `;
-
-        const riskHtml = analysis.risk_signals.map((risk) => `
+        const res=await fetch("/api/extension/analysis/{safe_analysis_id}");
+        const data=await res.json();
+        if(!res.ok) throw new Error(data.detail||"Could not load analysis.");
+        document.getElementById("heading").textContent   =data.dashboard_heading;
+        document.getElementById("subheading").textContent=data.dashboard_subheading;
+        const a=data.analysis;
+        const score=Number(a.danger_score||0), rep=Number(a.reputation_score||0);
+        const dt=getDangerTheme(score), rt=getReputationTheme(rep);
+        setGauge("danger-gauge",score,dt.color);
+        setGauge("reputation-gauge",rep,rt.color);
+        animateNumber(document.getElementById("danger-score"),0,score,700);
+        animateNumber(document.getElementById("reputation-score"),0,rep,700);
+        document.getElementById("danger-headline").textContent    =`${{dt.label}} · ${{score}}/100`;
+        document.getElementById("danger-copy").textContent        =dt.copy;
+        document.getElementById("reputation-headline").textContent=`${{rt.label}} · ${{rep}}/100`;
+        document.getElementById("reputation-copy").textContent    =rt.copy;
+        document.getElementById("login-copy").textContent         =loginSafetyText(a);
+        const lb=document.getElementById("login-badge");
+        lb.textContent=escapeHtml(a.login_safety||"Caution");
+        lb.className=`login-badge ${{badgeClass(a.login_safety)}}`;
+        const dc=score>=75?"high":score>=40?"medium":"low";
+        document.getElementById("hero-pills").innerHTML=`
+          <div class="pill ${{dc}}">${{dt.label}}</div>
+          <div class="pill">Reputation ${{rep}}/100</div>
+          <div class="pill">Login ${{escapeHtml(a.login_safety||"Caution")}}</div>
+          <div class="pill">${{escapeHtml(a.intent||"Unknown intent")}}</div>
+          <div class="pill">${{escapeHtml(a.title||"Untitled page")}}</div>`;
+        const riskHtml=a.risk_signals.map(r=>`
           <div class="risk-item">
-            <div class="pill ${{
-              risk.severity === "high" ? "high" : risk.severity === "medium" ? "medium" : "low"
-            }}">${{escapeHtml(risk.severity)}} risk</div>
-            <div><strong>${{escapeHtml(risk.label)}}</strong></div>
-            <div>${{escapeHtml(risk.explanation)}}</div>
-          </div>
-        `).join("");
-
-        app.className = "grid";
-        app.innerHTML = `
+            <div class="pill ${{r.severity==="high"?"high":r.severity==="medium"?"medium":"low"}}" style="margin-bottom:8px">${{escapeHtml(r.severity)}} risk</div>
+            <div><strong>${{escapeHtml(r.label)}}</strong></div>
+            <div style="color:#64748b;margin-top:4px;font-size:13px">${{escapeHtml(r.explanation)}}</div>
+          </div>`).join("");
+        app.className="grid";
+        app.innerHTML=`
           <section class="card">
             <h2>Plain-Language Summary</h2>
-            <div class="summary">${{escapeHtml(analysis.summary)}}</div>
-            <div class="meta" style="margin-top: 18px;">
-              <div class="meta-row">
-                <div class="meta-label">Danger Score</div>
-                <div>${{score}} / 100</div>
-              </div>
-              <div class="meta-row">
-                <div class="meta-label">Reputation Score</div>
-                <div>${{reputationScore}} / 100</div>
-              </div>
-              <div class="meta-row">
-                <div class="meta-label">Intent</div>
-                <div>${{escapeHtml(analysis.intent)}}</div>
-              </div>
-              <div class="meta-row">
-                <div class="meta-label">Login Safety</div>
-                <div>${{escapeHtml(analysis.login_safety)}}</div>
-              </div>
-              <div class="meta-row">
-                <div class="meta-label">Accessibility Hint</div>
-                <div>${{escapeHtml(analysis.accessibility_hint)}}</div>
-              </div>
-              <div class="meta-row">
-                <div class="meta-label">Recommended Action</div>
-                <div>${{escapeHtml(analysis.recommended_action)}}</div>
-              </div>
+            <div class="summary">${{escapeHtml(a.summary)}}</div>
+            <div class="meta" style="margin-top:18px">
+              <div class="meta-row"><div class="meta-label">Danger Score</div><div>${{score}}/100</div></div>
+              <div class="meta-row"><div class="meta-label">Reputation Score</div><div>${{rep}}/100</div></div>
+              <div class="meta-row"><div class="meta-label">Intent</div><div>${{escapeHtml(a.intent)}}</div></div>
+              <div class="meta-row"><div class="meta-label">Login Safety</div><div>${{escapeHtml(a.login_safety)}}</div></div>
+              <div class="meta-row"><div class="meta-label">Accessibility Hint</div><div>${{escapeHtml(a.accessibility_hint)}}</div></div>
+              <div class="meta-row"><div class="meta-label">Recommended Action</div><div>${{escapeHtml(a.recommended_action)}}</div></div>
             </div>
           </section>
-          <section class="card">
-            <h2>Key Points</h2>
-            ${{renderPointList(analysis.key_points, "No key points were extracted.")}}
-          </section>
-          <section class="card">
-            <h2>Risk Signals</h2>
-            <div class="risk-list">${{riskHtml}}</div>
-          </section>
-          <section class="card">
-            <h2>Site Reputation</h2>
-            <div class="summary">${{escapeHtml(analysis.reputation_summary || "No reputation summary available.")}}</div>
-            <div class="list" style="margin-top: 16px;">
-              ${{renderList(
-                analysis.reputation_examples,
-                "No verified bad history was identified from this analysis."
-              )}}
-            </div>
-          </section>
-          <section class="card">
-            <h2>Source Details</h2>
-            <div class="meta">
-              <div class="meta-row">
-                <div class="meta-label">Page Title</div>
-                <div>${{escapeHtml(analysis.title || "Untitled page")}}</div>
+          <section>
+            <section class="card" style="margin-bottom:18px"><h2>Key Points</h2>${{renderPoints(a.key_points,"No key points extracted.")}}</section>
+            <section class="card" style="margin-bottom:18px"><h2>Risk Signals</h2><div class="risk-list">${{riskHtml}}</div></section>
+            <section class="card" style="margin-bottom:18px">
+              <h2>Site Reputation</h2>
+              <div class="summary">${{escapeHtml(a.reputation_summary||"No reputation summary available.")}}</div>
+              <div class="list" style="margin-top:14px">${{renderList(a.reputation_examples,"No verified bad history identified.")}}</div>
+            </section>
+            <section class="card">
+              <h2>Source Details</h2>
+              <div class="meta">
+                <div class="meta-row"><div class="meta-label">Page Title</div><div>${{escapeHtml(a.title||"Untitled")}}</div></div>
+                <div class="meta-row"><div class="meta-label">URL</div><div style="word-break:break-all">${{escapeHtml(a.url||"Not provided")}}</div></div>
+                <div class="meta-row"><div class="meta-label">Original Excerpt</div><pre>${{escapeHtml(a.original_text_excerpt)}}</pre></div>
               </div>
-              <div class="meta-row">
-                <div class="meta-label">URL</div>
-                <div>${{escapeHtml(analysis.url || "Not provided")}}</div>
-              </div>
-              <div class="meta-row">
-                <div class="meta-label">Original Excerpt</div>
-                <pre>${{escapeHtml(analysis.original_text_excerpt)}}</pre>
-              </div>
-            </div>
-          </section>
-        `;
-      }} catch (error) {{
-        app.className = "empty";
-        app.textContent = error.message;
+            </section>
+          </section>`;
+      }} catch(err) {{
+        app.className="empty";
+        app.textContent=err.message;
       }}
     }}
-
     loadAnalysis();
   </script>
 </body>

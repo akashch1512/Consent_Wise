@@ -77,20 +77,20 @@ function getDangerTheme(score) {
   if (score >= 75) {
     return {
       title: "High danger",
-      color: "#ef4444",
+      color: "#dc2626",
       copy: "This page contains risky or harmful language.",
     };
   }
   if (score >= 40) {
     return {
       title: "Use caution",
-      color: "#f59e0b",
+      color: "#d97706",
       copy: "Important terms need a careful read before you proceed.",
     };
   }
   return {
     title: "Lower danger",
-    color: "#22c55e",
+    color: "#16a34a",
     copy: "No major risk signals were found in the visible text.",
   };
 }
@@ -99,20 +99,20 @@ function getReputationTheme(score) {
   if (score >= 75) {
     return {
       title: "Strong reputation",
-      color: "#22c55e",
+      color: "#16a34a",
       copy: "The site appears more trustworthy overall.",
     };
   }
   if (score >= 40) {
     return {
       title: "Mixed reputation",
-      color: "#f59e0b",
+      color: "#d97706",
       copy: "The site may be acceptable, but it deserves extra review.",
     };
   }
   return {
     title: "Poor reputation",
-    color: "#ef4444",
+    color: "#dc2626",
     copy: "The site shows weak trust signals or concerning patterns.",
   };
 }
@@ -122,7 +122,7 @@ function updateRing(ring, valueEl, score, color) {
     if (valueEl) valueEl.textContent = "--";
     if (ring) {
       ring.style.setProperty("--ring-angle", "8deg");
-      ring.style.setProperty("--ring-color", "#38bdf8");
+      ring.style.setProperty("--ring-color", "#6366f1");
     }
     return;
   }
