@@ -35,7 +35,18 @@ const analysisSummary = document.getElementById("analysis-summary");
 const summaryPoints = document.getElementById("summary-points");
 const reputationSummary = document.getElementById("reputation-summary");
 const reputationExamples = document.getElementById("reputation-examples");
+const ttsControls = document.getElementById("tts-controls");
+const ttsLang = document.getElementById("tts-lang");
+const ttsPlayBtn = document.getElementById("tts-play-btn");
+const ttsAudio = document.getElementById("tts-audio");
+const chatSection = document.getElementById("chat-section");
+const chatWindow = document.getElementById("chat-window");
+const chatInput = document.getElementById("chat-input");
+const chatSendBtn = document.getElementById("chat-send-btn");
+const chatLang = document.getElementById("chat-lang");
 
+let chatHistory = [];
+let latestOriginalText = "";
 function animateNumber(el, from, to, duration) {
   if (!el) return;
   const start = performance.now();
@@ -224,11 +235,12 @@ function setAnalysisState({
     dangerCopy.textContent = "Reviewing the visible agreement text now.";
     reputationTitle.textContent = "Checking site";
     reputationCopy.textContent = "Estimating trust and login safety.";
-    updateRing(dangerRing, dangerValue, undefined);
     updateRing(reputationRing, reputationValue, undefined);
     setLoginSafety("Caution", "Hold on while the site is being analyzed.");
     renderPointList(summaryPoints, [], "Preparing a readable summary...", "chip");
     renderPointList(reputationExamples, [], "Checking for known reputation concerns...", "list-item");
+    ttsControls.style.display = "none";
+    chatSection.style.display = "none";
     return;
   }
 
@@ -248,6 +260,15 @@ function setAnalysisState({
   setLoginSafety(loginSafety, loginSafetyText);
   renderPointList(summaryPoints, keyPoints, "No key points extracted yet.", "chip");
   renderPointList(reputationExamples, badExamples, "No verified bad history was identified from this analysis.", "list-item");
+  
+  if (summary && summary !== "Analyze a page with terms, sign-in, consent, or payment language to populate this summary.") {
+    ttsControls.style.display = "flex";
+    chatSection.style.display = "block";
+    resetChat();
+  } else {
+    ttsControls.style.display = "none";
+    chatSection.style.display = "none";
+  }
 }
 
 function sendMessageToTab(tabId, message) {
@@ -356,7 +377,9 @@ function renderAnalysis(data, sourceMeta) {
     latestLoginGuidance: normalized.login_guidance || "",
     latestKeyPoints: normalized.key_points || [],
     latestMeta: sourceMeta,
+    latestOriginalText: data.original_text_excerpt || "",
   });
+  latestOriginalText = data.original_text_excerpt || "";
 
   if (openLatestBtn) openLatestBtn.disabled = false;
 }
@@ -449,6 +472,7 @@ function restoreLatestAnalysis() {
       "latestLoginGuidance",
       "latestKeyPoints",
       "latestMeta",
+      "latestOriginalText",
     ],
     (data) => {
       if (!data.latestSummary) return;
@@ -466,9 +490,11 @@ function restoreLatestAnalysis() {
           "latestLoginGuidance",
           "latestKeyPoints",
           "latestMeta",
+          "latestOriginalText",
         ]);
         return;
       }
+      latestOriginalText = data.latestOriginalText || "";
       renderAnalysis(
         {
           dashboard_url: data.latestDashboardUrl,
@@ -487,6 +513,128 @@ function restoreLatestAnalysis() {
     }
   );
 }
+
+function resetChat() {
+  chatHistory = [];
+  chatWindow.innerHTML = '<div class="chat-message chat-ai">Ask me anything about this agreement. You can ask in English, Hindi, or any supported Indian language!</div>';
+  chatInput.value = "";
+}
+
+function appendMessage(role, text) {
+  const msgDiv = document.createElement("div");
+  msgDiv.className = `chat-message ${role === "user" ? "chat-user" : "chat-ai"}`;
+  msgDiv.textContent = text;
+  chatWindow.appendChild(msgDiv);
+  chatWindow.scrollTop = chatWindow.scrollHeight;
+}
+
+chatSendBtn.addEventListener("click", async () => {
+  const text = chatInput.value.trim();
+  if (!text) return;
+  
+  appendMessage("user", text);
+  chatInput.value = "";
+  chatSendBtn.disabled = true;
+
+  const thinkingDiv = document.createElement("div");
+  thinkingDiv.className = "chat-message chat-ai";
+  thinkingDiv.textContent = "Thinking...";
+  chatWindow.appendChild(thinkingDiv);
+  chatWindow.scrollTop = chatWindow.scrollHeight;
+
+  let currentLang = "Indian English";
+  if (chatLang && chatLang.options) {
+    currentLang = chatLang.options[chatLang.selectedIndex].text;
+  }
+  const questionWithLang = `[Please answer in ${currentLang}] ${text}`;
+
+  try {
+    const res = await fetch(`${BACKEND_URL}/api/chat`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        document_context: latestOriginalText || analysisSummary.textContent,
+        question: questionWithLang,
+        history: chatHistory
+      })
+    });
+    
+    if (!res.ok) throw new Error("Chat failed.");
+    const data = await res.json();
+    chatHistory.push({ role: "user", text: questionWithLang });
+    chatHistory.push({ role: "model", text: data.answer });
+    
+    chatWindow.removeChild(thinkingDiv);
+    appendMessage("model", data.answer);
+  } catch (err) {
+    chatWindow.removeChild(thinkingDiv);
+    appendMessage("model", "Sorry, I couldn't process your request right now.");
+  } finally {
+    chatSendBtn.disabled = false;
+  }
+});
+
+chatInput.addEventListener("keypress", (e) => {
+  if (e.key === "Enter") chatSendBtn.click();
+});
+
+if (chatLang) {
+  chatLang.addEventListener("change", () => {
+    if (chatLang.value === "hi-IN" || chatLang.value === "mr-IN") {
+      document.body.style.fontFamily = "'Noto Sans Devanagari', 'Space Grotesk', sans-serif";
+      document.body.style.fontWeight = "500";
+    } else {
+      document.body.style.fontFamily = "'Space Grotesk', sans-serif";
+      document.body.style.fontWeight = "400";
+    }
+  });
+}
+
+let isPlaying = false;
+ttsPlayBtn.addEventListener("click", async () => {
+  if (isPlaying) {
+    ttsAudio.pause();
+    isPlaying = false;
+    ttsPlayBtn.textContent = "Listen";
+    return;
+  }
+  
+  const textToSay = analysisSummary.textContent;
+  if (!textToSay || textToSay.includes("Analyze a page")) return;
+  
+  ttsPlayBtn.disabled = true;
+  ttsPlayBtn.textContent = "Loading...";
+  
+  try {
+    const res = await fetch(`${BACKEND_URL}/api/tts`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        text: textToSay,
+        language_code: ttsLang.value,
+        voice_name: "Kore"
+      })
+    });
+    
+    if (!res.ok) throw new Error("TTS failed");
+    const data = await res.json();
+    ttsAudio.src = `data:${data.mime_type};base64,${data.audio_base64}`;
+    await ttsAudio.play();
+    isPlaying = true;
+    ttsPlayBtn.textContent = "Stop";
+    
+    ttsAudio.onended = () => {
+      isPlaying = false;
+      ttsPlayBtn.textContent = "Listen";
+    };
+  } catch (err) {
+    console.error(err);
+    alert("Could not load audio. Try again.");
+  } finally {
+    ttsPlayBtn.disabled = false;
+    if (!isPlaying) ttsPlayBtn.textContent = "Listen";
+  }
+});
 
 openDashboardBtn.addEventListener("click", openDashboard);
 openLatestBtn.addEventListener("click", openLatestReport);

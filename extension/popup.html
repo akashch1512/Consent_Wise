@@ -4,9 +4,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>ConsentGuard AI</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
     @property --ring-angle {
       syntax: "<angle>";
@@ -416,6 +416,93 @@
       background: #e8edf5;
     }
 
+    /* ── TTS Controls ─────────────────────────────────────────────────── */
+    .tts-controls {
+      display: flex;
+      gap: 8px;
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid var(--line);
+    }
+    
+    .tts-select {
+      flex: 1;
+      padding: 8px 12px;
+      border-radius: 10px;
+      border: 1px solid #e2e8f0;
+      font-family: inherit;
+      font-size: 13px;
+      color: #334155;
+      background: #ffffff;
+      outline: none;
+    }
+
+    .tts-btn {
+      padding: 8px 16px;
+    }
+
+    /* ── Chatbot ──────────────────────────────────────────────────────── */
+    .chat-window {
+      max-height: 180px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding: 10px;
+      background: #f8fafc;
+      border: 1px solid rgba(99, 102, 241, 0.08);
+      border-radius: 12px;
+      margin-top: 8px;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .chat-message {
+      padding: 8px 12px;
+      border-radius: 10px;
+    }
+
+    .chat-ai {
+      align-self: flex-start;
+      background: #eef2ff;
+      color: #312e81;
+      border-bottom-left-radius: 0;
+    }
+
+    .chat-user {
+      align-self: flex-end;
+      background: #6366f1;
+      color: #ffffff;
+      border-bottom-right-radius: 0;
+    }
+
+    .chat-input-row {
+      display: flex;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    #chat-input {
+      flex: 1;
+      padding: 10px 14px;
+      border-radius: 12px;
+      border: 1px solid #e2e8f0;
+      font-family: inherit;
+      font-size: 13px;
+      color: #334155;
+      outline: none;
+    }
+
+    #chat-input:focus {
+      border-color: #6366f1;
+    }
+
+    .chat-send-btn {
+      padding: 0 16px;
+      display: grid;
+      place-items: center;
+    }
+
     /* ── Footer ───────────────────────────────────────────────────────── */
     .footer-note {
       margin-top: 10px;
@@ -517,6 +604,22 @@
         <div class="section-meta" id="analysis-meta">Waiting for scan</div>
       </div>
       <div class="summary-box" id="analysis-summary">Analyze a page with terms, sign-in, consent, or payment language to populate this summary.</div>
+      <div class="tts-controls" id="tts-controls" style="display: none;">
+        <select id="tts-lang" class="tts-select">
+          <option value="en-IN">Indian English</option>
+          <option value="hi-IN">Hindi</option>
+          <option value="mr-IN">Marathi</option>
+          <option value="ta-IN">Tamil</option>
+          <option value="te-IN">Telugu</option>
+          <option value="bn-IN">Bengali</option>
+          <option value="gu-IN">Gujarati</option>
+          <option value="kn-IN">Kannada</option>
+          <option value="ml-IN">Malayalam</option>
+          <option value="pa-IN">Punjabi</option>
+        </select>
+        <button id="tts-play-btn" class="secondary-btn tts-btn">Listen</button>
+        <audio id="tts-audio" style="display: none;"></audio>
+      </div>
       <div class="chip-row" id="summary-points"></div>
     </section>
 
@@ -527,6 +630,34 @@
       </div>
       <div class="reputation-box" id="reputation-summary">Reputation details will appear here after a scan.</div>
       <div class="list" id="reputation-examples"></div>
+    </section>
+
+    <section class="section" id="chat-section" style="display: none;">
+      <div class="section-head">
+        <h2 class="section-title">Ask the Document</h2>
+        <div class="section-meta" id="chat-meta">AI Assistant</div>
+      </div>
+      <div class="chat-window" id="chat-window">
+        <div class="chat-message chat-ai">Ask me anything about this agreement. You can ask in English, Hindi, or any supported Indian language!</div>
+      </div>
+      <div class="chat-input-row">
+        <select id="chat-lang" class="tts-select" style="max-width: 95px; text-overflow: ellipsis; white-space: nowrap; overflow: hidden; padding: 0 8px;">
+          <option value="en-IN">Eng (IN)</option>
+          <option value="hi-IN">Hindi</option>
+          <option value="mr-IN">Marathi</option>
+          <option value="ta-IN">Tamil</option>
+          <option value="te-IN">Telugu</option>
+          <option value="bn-IN">Bengali</option>
+          <option value="gu-IN">Gujarati</option>
+          <option value="kn-IN">Kannada</option>
+          <option value="ml-IN">Malayalam</option>
+          <option value="pa-IN">Punjabi</option>
+        </select>
+        <input type="text" id="chat-input" placeholder="Type your question..." autocomplete="off" />
+        <button id="chat-send-btn" class="primary-btn chat-send-btn">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" fill="currentColor"/></svg>
+        </button>
+      </div>
     </section>
 
     <section class="actions">

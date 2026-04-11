@@ -1,12 +1,13 @@
 import base64
 import os
 import struct
+from pathlib import Path
 
 import httpx
 from dotenv import load_dotenv
 from fastapi import HTTPException
 
-load_dotenv(".env")
+load_dotenv(Path(__file__).resolve().parent.parent.parent / ".env", override=True)
 
 TTS_MODEL = "gemini-2.5-flash-preview-tts"
 TTS_API_URL = (

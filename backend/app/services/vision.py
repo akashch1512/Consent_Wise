@@ -1,6 +1,7 @@
 import base64
 import os
 import json
+from pathlib import Path
 
 import httpx
 from fastapi import HTTPException
@@ -8,7 +9,7 @@ from dotenv import load_dotenv
 
 from app.api.vision_schemas import VisionAnalysisResponse
 
-load_dotenv(".env")
+load_dotenv(Path(__file__).resolve().parent.parent.parent / ".env", override=True)
 
 VISION_MODEL = "gemini-2.5-flash"
 

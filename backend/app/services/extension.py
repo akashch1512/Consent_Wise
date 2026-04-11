@@ -212,7 +212,7 @@ def build_dashboard_html(analysis_id: str) -> str:
   <title>ConsentGuard AI Dashboard</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
     @property --gauge-angle {{
       syntax: "<angle>";
@@ -504,6 +504,24 @@ def build_dashboard_html(analysis_id: str) -> str:
           <section class="card">
             <h2>Plain-Language Summary</h2>
             <div class="summary">${{escapeHtml(a.summary)}}</div>
+            
+            <div style="display:flex; gap:8px; margin-top:12px; border-top:1px solid rgba(99,102,241,0.12); padding-top:12px;">
+              <select id="dash-tts-lang" style="flex:1; padding:8px 12px; border-radius:10px; border:1px solid #e2e8f0; background:#ffffff; color:#334155; font-size:13px; outline:none; font-family:inherit;">
+                <option value="en-IN">Indian English</option>
+                <option value="hi-IN">Hindi</option>
+                <option value="mr-IN">Marathi</option>
+                <option value="ta-IN">Tamil</option>
+                <option value="te-IN">Telugu</option>
+                <option value="bn-IN">Bengali</option>
+                <option value="gu-IN">Gujarati</option>
+                <option value="kn-IN">Kannada</option>
+                <option value="ml-IN">Malayalam</option>
+                <option value="pa-IN">Punjabi</option>
+              </select>
+              <button id="dash-tts-btn" style="padding:8px 16px; border-radius:10px; border:none; font-weight:700; background:linear-gradient(135deg, #6366f1, #0ea5e9); color:#fff; cursor:pointer; font-size:13px; font-family:inherit;" onclick="playDashTTS()">Listen</button>
+              <audio id="dash-tts-audio" style="display:none;"></audio>
+            </div>
+
             <div class="meta" style="margin-top:18px">
               <div class="meta-row"><div class="meta-label">Danger Score</div><div>${{score}}/100</div></div>
               <div class="meta-row"><div class="meta-label">Reputation Score</div><div>${{rep}}/100</div></div>
@@ -513,7 +531,30 @@ def build_dashboard_html(analysis_id: str) -> str:
               <div class="meta-row"><div class="meta-label">Recommended Action</div><div>${{escapeHtml(a.recommended_action)}}</div></div>
             </div>
           </section>
+          
           <section>
+            <section class="card" style="margin-bottom:18px">
+              <h2>Ask the Document</h2>
+              <div id="dash-chat-window" style="max-height:220px; overflow-y:auto; display:flex; flex-direction:column; gap:8px; padding:12px; background:#f8fafc; border:1px solid rgba(99,102,241,0.08); border-radius:12px; font-size:14px; line-height:1.5;">
+                <div style="padding:10px 12px; border-radius:10px; align-self:flex-start; background:#eef2ff; color:#312e81; border-bottom-left-radius:0;">Ask me anything about this agreement. You can ask in English, Hindi, or any supported Indian language!</div>
+              </div>
+              <div style="display:flex; gap:8px; margin-top:12px;">
+                <select id="dash-chat-lang" style="max-width:95px; text-overflow:ellipsis; white-space:nowrap; overflow:hidden; padding:0 8px; border-radius:10px; border:1px solid #e2e8f0; background:#ffffff; color:#334155; font-size:13px; outline:none; font-family:inherit;">
+                  <option value="en-IN">Eng (IN)</option>
+                  <option value="hi-IN">Hindi</option>
+                  <option value="mr-IN">Marathi</option>
+                  <option value="ta-IN">Tamil</option>
+                  <option value="te-IN">Telugu</option>
+                  <option value="bn-IN">Bengali</option>
+                  <option value="gu-IN">Gujarati</option>
+                  <option value="kn-IN">Kannada</option>
+                  <option value="ml-IN">Malayalam</option>
+                  <option value="pa-IN">Punjabi</option>
+                </select>
+                <input type="text" id="dash-chat-input" placeholder="Type your question..." autocomplete="off" style="flex:1; padding:10px 14px; border-radius:10px; border:1px solid #e2e8f0; font-size:14px; color:#334155; outline:none; font-family:inherit;" onkeypress="if(event.key==='Enter') document.getElementById('dash-chat-btn').click();" />
+                <button id="dash-chat-btn" style="padding:0 18px; border-radius:10px; border:none; background:linear-gradient(135deg, #6366f1, #0ea5e9); color:#fff; cursor:pointer; font-weight:700; font-family:inherit;" onclick="sendDashChat()">Send</button>
+              </div>
+            </section>
             <section class="card" style="margin-bottom:18px"><h2>Key Points</h2>${{renderPoints(a.key_points,"No key points extracted.")}}</section>
             <section class="card" style="margin-bottom:18px"><h2>Risk Signals</h2><div class="risk-list">${{riskHtml}}</div></section>
             <section class="card" style="margin-bottom:18px">
@@ -530,11 +571,126 @@ def build_dashboard_html(analysis_id: str) -> str:
               </div>
             </section>
           </section>`;
+          
+        window.dashOriginalText = a.original_text_excerpt;
+        window.dashSummaryText = a.summary;
       }} catch(err) {{
         app.className="empty";
         app.textContent=err.message;
       }}
     }}
+    
+    let isDashPlaying = false;
+    let dashChatHistory = [];
+    
+    document.addEventListener("DOMContentLoaded", () => {{
+      const chatLang = document.getElementById("dash-chat-lang");
+      if (chatLang) {{
+        chatLang.addEventListener("change", () => {{
+          if (chatLang.value === "hi-IN" || chatLang.value === "mr-IN") {{
+            document.body.style.fontFamily = "'Noto Sans Devanagari', 'Space Grotesk', sans-serif";
+            document.body.style.fontWeight = "500";
+          }} else {{
+            document.body.style.fontFamily = "'Space Grotesk', sans-serif";
+            document.body.style.fontWeight = "400";
+          }}
+        }});
+      }}
+    }});
+
+    async function playDashTTS() {{
+      const btn = document.getElementById("dash-tts-btn");
+      const audio = document.getElementById("dash-tts-audio");
+      const lang = document.getElementById("dash-tts-lang").value;
+      
+      if (isDashPlaying) {{
+        audio.pause();
+        isDashPlaying = false;
+        btn.textContent = "Listen";
+        return;
+      }}
+      
+      btn.disabled = true;
+      btn.textContent = "Loading...";
+      try {{
+        const res = await fetch("/api/tts", {{
+          method: "POST",
+          headers: {{"Content-Type": "application/json"}},
+          body: JSON.stringify({{ text: window.dashSummaryText || "No summary text.", language_code: lang, voice_name: "Kore" }})
+        }});
+        if (!res.ok) throw new Error("TTS Failed");
+        const data = await res.json();
+        audio.src = `data:${{data.mime_type}};base64,${{data.audio_base64}}`;
+        await audio.play();
+        isDashPlaying = true;
+        btn.textContent = "Stop";
+        audio.onended = () => {{ isDashPlaying = false; btn.textContent = "Listen"; }};
+      }} catch(er) {{
+        console.error(er);
+        alert("Audio failed to load.");
+      }} finally {{
+        btn.disabled = false;
+      }}
+    }}
+
+    async function sendDashChat() {{
+      const input = document.getElementById("dash-chat-input");
+      const win = document.getElementById("dash-chat-window");
+      const btn = document.getElementById("dash-chat-btn");
+      const text = input.value.trim();
+      if (!text) return;
+      
+      const userDiv = document.createElement("div");
+      userDiv.style = "padding:10px 12px; border-radius:10px; align-self:flex-end; background:#6366f1; color:#fff; border-bottom-right-radius:0;";
+      userDiv.textContent = text;
+      win.appendChild(userDiv);
+      win.scrollTop = win.scrollHeight;
+      
+      input.value = "";
+      btn.disabled = true;
+      
+      const thinkDiv = document.createElement("div");
+      thinkDiv.style = "padding:10px 12px; border-radius:10px; align-self:flex-start; background:#eef2ff; color:#312e81; border-bottom-left-radius:0;";
+      thinkDiv.textContent = "Thinking...";
+      win.appendChild(thinkDiv);
+      win.scrollTop = win.scrollHeight;
+      
+      const langSelect = document.getElementById("dash-chat-lang");
+      let langText = "Indian English";
+      if (langSelect && langSelect.options) {{
+        langText = langSelect.options[langSelect.selectedIndex].text;
+      }}
+      const question = `[Please answer in ${{langText}}] ${{text}}`;
+      
+      try {{
+        const res = await fetch("/api/chat", {{
+          method: "POST",
+          headers: {{"Content-Type": "application/json"}},
+          body: JSON.stringify({{
+            document_context: window.dashOriginalText || "No context provided",
+            question: question,
+            history: dashChatHistory
+          }})
+        }});
+        if (!res.ok) throw new Error("Chat failed");
+        const data = await res.json();
+        dashChatHistory.push({{role:"user", text:question}});
+        dashChatHistory.push({{role:"model", text:data.answer}});
+        
+        win.removeChild(thinkDiv);
+        const aiDiv = document.createElement("div");
+        aiDiv.style = "padding:10px 12px; border-radius:10px; align-self:flex-start; background:#eef2ff; color:#312e81; border-bottom-left-radius:0;";
+        aiDiv.textContent = data.answer;
+        win.appendChild(aiDiv);
+      }} catch (er) {{
+        console.error(er);
+        thinkDiv.textContent = "Sorry, I couldn't process your request.";
+      }} finally {{
+        btn.disabled = false;
+        win.scrollTop = win.scrollHeight;
+      }}
+    }}
+
     loadAnalysis();
   </script>
 </body>
