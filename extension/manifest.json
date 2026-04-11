@@ -1,24 +1,37 @@
 {
   "manifest_version": 3,
-  "name": "ConsentGuard AI",
+  "name": "ConsentWise AI",
   "version": "1.0.0",
   "description": "Intelligently detects financial consent actions and redirects for safe, informed agreement.",
-
   "action": {
     "default_popup": "popup.html",
-    "default_title": "ConsentGuard AI"
+    "default_title": "ConsentWise AI"
   },
   "background": {
     "service_worker": "background.js"
   },
   "content_scripts": [
     {
-      "matches": ["<all_urls>"],
-      "js": ["content.js"],
-      "css": ["styles.css"],
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "css": [
+        "styles.css"
+      ],
       "run_at": "document_idle"
     }
   ],
-  "permissions": ["activeTab", "scripting", "tabs", "storage"],
-  "host_permissions": ["<all_urls>", "http://localhost:8000/*"]
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "tabs",
+    "storage"
+  ],
+  "host_permissions": [
+    "<all_urls>",
+    "http://localhost:8000/*"
+  ]
 }

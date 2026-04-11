@@ -19,7 +19,7 @@ _ANALYSIS_STORE: Dict[str, AnalysisRecord] = {}
 def get_extension_config(base_url: str) -> ExtensionConfigResponse:
     dashboard_url = f"{base_url}/dashboard"
     return ExtensionConfigResponse(
-        product_name="ConsentGuard AI",
+        product_name="ConsentWise AI",
         tagline="Understand before you agree",
         status_text="Protection Active",
         status_badge="Live",
@@ -192,7 +192,7 @@ def build_analysis_page_payload(analysis_id: str) -> AnalysisPageResponse | None
     if record is None:
         return None
     return AnalysisPageResponse(
-        product_name="ConsentGuard AI",
+        product_name="ConsentWise AI",
         dashboard_heading="Analysis Dashboard",
         dashboard_subheading=(
             f"Danger {record.danger_score}/100 · Reputation {record.reputation_score}/100 · "
@@ -209,7 +209,7 @@ def build_dashboard_html(analysis_id: str) -> str:
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>ConsentGuard AI Dashboard</title>
+  <title>ConsentWise AI Dashboard</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -378,7 +378,7 @@ def build_dashboard_html(analysis_id: str) -> str:
   <main class="shell">
     <section class="hero">
       <section class="hero-card">
-        <div class="eyebrow">ConsentGuard AI</div>
+        <div class="eyebrow">ConsentWise AI</div>
         <h1 id="heading">Loading analysis...</h1>
         <p class="sub" id="subheading">Fetching backend analysis for this intercepted page.</p>
         <div class="pill-row" id="hero-pills"></div>

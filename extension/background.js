@@ -1,5 +1,5 @@
 /**
- * ConsentGuard AI — background.js (Service Worker)
+ * ConsentWise AI — background.js (Service Worker)
  * ─────────────────────────────────────────────────────────────────────────────
  * Listens for messages from content.js and opens the analysis tab.
  * Keeps track of the last-opened analysis tab so it can be reused / focused.
@@ -13,7 +13,7 @@ let lastAnalysisTabId = null;
 
 // ─── Message listener ─────────────────────────────────────────────────────────
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  console.log("[ConsentGuard BG] 📩 Message received:", message.action);
+  console.log("[ConsentWise BG] 📩 Message received:", message.action);
 
   if (message.action === "openTab" && message.url) {
     handleOpenTab(message.url, sendResponse);
@@ -36,7 +36,7 @@ async function handleOpenTab(url, sendResponse) {
       if (existingTab) {
         await chrome.tabs.update(lastAnalysisTabId, { active: true, url });
         await chrome.windows.update(existingTab.windowId, { focused: true });
-        console.log("[ConsentGuard BG] ♻️  Reused existing analysis tab:", lastAnalysisTabId);
+        console.log("[ConsentWise BG] ♻️  Reused existing analysis tab:", lastAnalysisTabId);
         sendResponse({ success: true, tabId: lastAnalysisTabId, reused: true });
         return;
       }
@@ -45,11 +45,11 @@ async function handleOpenTab(url, sendResponse) {
     // Create a new tab
     const tab = await chrome.tabs.create({ url, active: true });
     lastAnalysisTabId = tab.id;
-    console.log("[ConsentGuard BG] ✅ New analysis tab created:", tab.id);
+    console.log("[ConsentWise BG] ✅ New analysis tab created:", tab.id);
     sendResponse({ success: true, tabId: tab.id, reused: false });
 
   } catch (err) {
-    console.error("[ConsentGuard BG] ❌ Error opening tab:", err.message);
+    console.error("[ConsentWise BG] ❌ Error opening tab:", err.message);
     sendResponse({ success: false, error: err.message });
   }
 }
@@ -67,13 +67,13 @@ async function getTab(tabId) {
 chrome.tabs.onRemoved.addListener((tabId) => {
   if (tabId === lastAnalysisTabId) {
     lastAnalysisTabId = null;
-    console.log("[ConsentGuard BG] 🗑️  Analysis tab closed — reference cleared.");
+    console.log("[ConsentWise BG] 🗑️  Analysis tab closed — reference cleared.");
   }
 });
 
 // ─── Installation / update hooks ──────────────────────────────────────────────
 chrome.runtime.onInstalled.addListener(({ reason }) => {
-  console.log(`[ConsentGuard BG] 🚀 Extension ${reason}. ConsentGuard AI is active.`);
+  console.log(`[ConsentWise BG] 🚀 Extension ${reason}. ConsentWise AI is active.`);
 });
 
-console.log("[ConsentGuard BG] 🛡️  Service worker loaded.");
+console.log("[ConsentWise BG] 🛡️  Service worker loaded.");
