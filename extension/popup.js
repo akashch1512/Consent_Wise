@@ -285,8 +285,8 @@ function setAnalysisState({
     setLoginSafety("Caution", t("analyzeSite"));
     renderPointList(summaryPoints, [], t("preparing") + "...", "chip");
     renderPointList(reputationExamples, [], t("checkingSite") + "...", "list-item");
-    ttsControls.style.display = "none";
-    chatSection.style.display = "none";
+    if (ttsControls) ttsControls.style.display = "none";
+    if (chatSection) chatSection.style.display = "none";
     if (quizSection) quizSection.style.display = "none";
     return;
   }
@@ -312,13 +312,13 @@ function setAnalysisState({
   const placeholderKey = "analyzePlaceholder";
   const isPlaceholder = !summary || Object.values(I18N).some((d) => d[placeholderKey] === summary);
   if (!isPlaceholder) {
-    ttsControls.style.display = "flex";
-    chatSection.style.display = "block";
+    if (ttsControls) ttsControls.style.display = "flex";
+    if (chatSection) chatSection.style.display = "block";
     if (quizSection) quizSection.style.display = "block";
-    resetChat();
+    if (chatSection) resetChat();
   } else {
-    ttsControls.style.display = "none";
-    chatSection.style.display = "none";
+    if (ttsControls) ttsControls.style.display = "none";
+    if (chatSection) chatSection.style.display = "none";
     if (quizSection) quizSection.style.display = "none";
   }
 }
@@ -584,6 +584,7 @@ function restoreLatestAnalysis() {
 }
 
 function resetChat() {
+  if (!chatWindow || !chatInput) return;
   chatHistory = [];
   chatWindow.innerHTML = `<div class="chat-message chat-ai">${t("chatWelcome")}</div>`;
   chatInput.value = "";
@@ -591,6 +592,7 @@ function resetChat() {
 }
 
 function appendMessage(role, text) {
+  if (!chatWindow) return;
   const msgDiv = document.createElement("div");
   msgDiv.className = `chat-message ${role === "user" ? "chat-user" : "chat-ai"}`;
   msgDiv.textContent = text;
@@ -1748,6 +1750,10 @@ setupGlobalLang();
   const docIntent = document.getElementById("doc-intent");
   const extractedText = document.getElementById("doc-extracted-text");
   const extractedToggle = document.getElementById("doc-extracted-toggle");
+
+  if (!dropZone || !fileInput || !filePreview || !previewImg || !fileNameEl || !docStatus || !analyzeBtn || !docResults || !docSummary || !docKeyPoints || !docRisks || !docHint || !docIntent || !extractedText || !extractedToggle) {
+    return;
+  }
 
   let selectedFile = null;
 

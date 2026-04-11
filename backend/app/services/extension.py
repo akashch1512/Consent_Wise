@@ -366,6 +366,156 @@ def build_dashboard_html(analysis_id: str) -> str:
       background: #f8fafc;
       border: 1px solid rgba(99,102,241,0.08);
     }}
+    .doc-uploader {{
+      display: grid;
+      gap: 12px;
+      margin-bottom: 18px;
+    }}
+    .drop-zone {{
+      position: relative;
+      border: 2px dashed rgba(99, 102, 241, 0.22);
+      border-radius: 18px;
+      padding: 24px 16px;
+      text-align: center;
+      background: linear-gradient(180deg, #fbfdff 0%, #f8fafc 100%);
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+    }}
+    .drop-zone.drag-over {{
+      border-color: var(--accent);
+      background: #eef2ff;
+    }}
+    .drop-zone input[type="file"] {{
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      width: 100%;
+      height: 100%;
+      cursor: pointer;
+    }}
+    .drop-icon {{
+      width: 40px;
+      height: 40px;
+      margin: 0 auto 10px;
+      border-radius: 12px;
+      display: grid;
+      place-items: center;
+      background: linear-gradient(135deg, #ede9fe, #dbeafe);
+      border: 1px solid rgba(99, 102, 241, 0.18);
+    }}
+    .drop-label {{
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--text);
+    }}
+    .drop-hint {{
+      margin-top: 4px;
+      font-size: 13px;
+      color: var(--muted);
+    }}
+    .file-preview {{
+      display: none;
+      overflow: hidden;
+      border-radius: 16px;
+      border: 1px solid rgba(99,102,241,0.12);
+      background: #f1f5f9;
+    }}
+    .file-preview img {{
+      width: 100%;
+      max-height: 180px;
+      object-fit: contain;
+      display: block;
+    }}
+    .file-name-bar {{
+      padding: 8px 12px;
+      font-size: 12px;
+      color: var(--muted);
+      font-weight: 600;
+      background: #f8fafc;
+      border-top: 1px solid rgba(99,102,241,0.08);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }}
+    .doc-status {{
+      min-height: 18px;
+      font-size: 12px;
+      color: var(--muted);
+    }}
+    .doc-status.error {{ color: var(--bad); }}
+    .doc-status.loading {{ color: var(--accent); }}
+    .doc-results {{
+      display: none;
+      gap: 10px;
+    }}
+    .doc-results.visible {{
+      display: grid;
+    }}
+    .doc-result-block {{
+      padding: 12px 14px;
+      border-radius: 12px;
+      background: #f8fafc;
+      border: 1px solid rgba(99,102,241,0.08);
+    }}
+    .doc-result-label {{
+      color: var(--accent);
+      font-size: 11px;
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-weight: 700;
+    }}
+    .doc-result-text {{
+      font-size: 14px;
+      line-height: 1.7;
+      color: #334155;
+    }}
+    .doc-list {{
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      display: grid;
+      gap: 6px;
+    }}
+    .doc-list li {{
+      position: relative;
+      padding-left: 14px;
+      font-size: 14px;
+      line-height: 1.6;
+      color: #334155;
+    }}
+    .doc-list li::before {{
+      content: "\\2022";
+      position: absolute;
+      left: 0;
+      color: var(--accent);
+    }}
+    .doc-list.risk li::before {{
+      content: "\\26A0";
+      color: var(--bad);
+    }}
+    .doc-extracted-toggle {{
+      margin-bottom: 8px;
+      padding: 0;
+      border: none;
+      background: transparent;
+      color: var(--accent);
+      font: inherit;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+    }}
+    .doc-extracted-text {{
+      display: none;
+      white-space: pre-wrap;
+      word-break: break-word;
+      color: var(--muted);
+      line-height: 1.6;
+      font-size: 13px;
+    }}
+    .doc-extracted-text.open {{
+      display: block;
+    }}
     .meta-label {{ color: var(--muted); font-size: 11px; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 700; }}
     .summary {{ font-size: 15px; line-height: 1.75; color: #334155; }}
     ul {{ margin: 0; padding-left: 18px; line-height: 1.85; color: #334155; }}
@@ -533,6 +683,58 @@ def build_dashboard_html(analysis_id: str) -> str:
           </section>
           
           <section>
+            <section class="card doc-uploader">
+              <h2>Document / Image</h2>
+              <div class="drop-zone" id="dash-drop-zone">
+                <input type="file" id="dash-doc-file-input" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,application/pdf" />
+                <div class="drop-icon">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 13H9l3-7 3 7h-2v2h-2v-2zm1-9.5c.83 0 1.5.67 1.5 1.5S12.83 8.5 12 8.5 10.5 7.83 10.5 7s.67-1.5 1.5-1.5z" fill="url(#dashUploadGradient)"/>
+                    <defs>
+                      <linearGradient id="dashUploadGradient" x1="2" y1="2" x2="22" y2="22" gradientUnits="userSpaceOnUse">
+                        <stop offset="0%" stop-color="#6366f1"/>
+                        <stop offset="100%" stop-color="#0ea5e9"/>
+                      </linearGradient>
+                    </defs>
+                  </svg>
+                </div>
+                <div class="drop-label">Drop image or PDF here</div>
+                <div class="drop-hint">Or click to browse</div>
+              </div>
+              <div class="file-preview" id="dash-doc-file-preview">
+                <img id="dash-doc-preview-img" src="" alt="Preview" />
+                <div class="file-name-bar" id="dash-doc-file-name">-</div>
+              </div>
+              <div class="doc-status" id="dash-doc-status"></div>
+              <button id="dash-doc-analyze-btn" style="padding:12px 16px; border-radius:12px; border:none; font-weight:700; background:linear-gradient(135deg, #6366f1, #0ea5e9); color:#fff; cursor:pointer; font-size:14px; font-family:inherit;" disabled>Analyze Document</button>
+              <div class="doc-results" id="dash-doc-results">
+                <div class="doc-result-block">
+                  <div class="doc-result-label">Summary</div>
+                  <div class="doc-result-text" id="dash-doc-summary"></div>
+                </div>
+                <div class="doc-result-block">
+                  <div class="doc-result-label">Key Points</div>
+                  <ul class="doc-list" id="dash-doc-key-points"></ul>
+                </div>
+                <div class="doc-result-block">
+                  <div class="doc-result-label">Risks</div>
+                  <ul class="doc-list risk" id="dash-doc-risks"></ul>
+                </div>
+                <div class="doc-result-block">
+                  <div class="doc-result-label">Accessibility Hint</div>
+                  <div class="doc-result-text" id="dash-doc-hint"></div>
+                </div>
+                <div class="doc-result-block">
+                  <div class="doc-result-label">Document Intent</div>
+                  <div class="doc-result-text" id="dash-doc-intent"></div>
+                </div>
+                <div class="doc-result-block">
+                  <div class="doc-result-label">Extracted Text</div>
+                  <button class="doc-extracted-toggle" id="dash-doc-extracted-toggle">Show raw text ▾</button>
+                  <div class="doc-extracted-text" id="dash-doc-extracted-text"></div>
+                </div>
+              </div>
+            </section>
             <section class="card" style="margin-bottom:18px">
               <h2>Ask the Document</h2>
               <div id="dash-chat-window" style="max-height:220px; overflow-y:auto; display:flex; flex-direction:column; gap:8px; padding:12px; background:#f8fafc; border:1px solid rgba(99,102,241,0.08); border-radius:12px; font-size:14px; line-height:1.5;">
@@ -690,6 +892,155 @@ def build_dashboard_html(analysis_id: str) -> str:
         win.scrollTop = win.scrollHeight;
       }}
     }}
+
+    (function initDashDocUpload() {{
+      const dropZone = document.getElementById("dash-drop-zone");
+      const fileInput = document.getElementById("dash-doc-file-input");
+      const filePreview = document.getElementById("dash-doc-file-preview");
+      const previewImg = document.getElementById("dash-doc-preview-img");
+      const fileNameEl = document.getElementById("dash-doc-file-name");
+      const docStatus = document.getElementById("dash-doc-status");
+      const analyzeBtn = document.getElementById("dash-doc-analyze-btn");
+      const docResults = document.getElementById("dash-doc-results");
+      const docSummary = document.getElementById("dash-doc-summary");
+      const docKeyPoints = document.getElementById("dash-doc-key-points");
+      const docRisks = document.getElementById("dash-doc-risks");
+      const docHint = document.getElementById("dash-doc-hint");
+      const docIntent = document.getElementById("dash-doc-intent");
+      const extractedText = document.getElementById("dash-doc-extracted-text");
+      const extractedToggle = document.getElementById("dash-doc-extracted-toggle");
+      let selectedFile = null;
+
+      if (!dropZone || !fileInput || !filePreview || !previewImg || !fileNameEl || !docStatus || !analyzeBtn || !docResults || !docSummary || !docKeyPoints || !docRisks || !docHint || !docIntent || !extractedText || !extractedToggle) {{
+        return;
+      }}
+
+      function setStatus(message, variant) {{
+        docStatus.textContent = message || "";
+        docStatus.className = "doc-status" + (variant ? ` ${{variant}}` : "");
+      }}
+
+      function renderList(ulEl, items, isRisk) {{
+        ulEl.innerHTML = "";
+        if (!items.length) {{
+          const li = document.createElement("li");
+          li.textContent = isRisk ? "No notable risks found." : "None listed.";
+          ulEl.appendChild(li);
+          return;
+        }}
+        items.forEach((text) => {{
+          const li = document.createElement("li");
+          li.textContent = text;
+          ulEl.appendChild(li);
+        }});
+      }}
+
+      function renderResults(data) {{
+        docSummary.textContent = data.summary || "-";
+        renderList(docKeyPoints, data.key_points || [], false);
+        renderList(docRisks, data.risks || [], true);
+        docHint.textContent = data.accessibility_hint || "-";
+        docIntent.textContent = data.intent || "-";
+        extractedText.textContent = data.extracted_text || "-";
+        extractedText.classList.remove("open");
+        extractedToggle.textContent = "Show raw text ▾";
+        docResults.classList.add("visible");
+        docResults.scrollIntoView({{ behavior: "smooth", block: "nearest" }});
+      }}
+
+      function handleFileSelected(file) {{
+        const allowed = ["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif", "application/pdf"];
+        if (!allowed.includes(file.type)) {{
+          setStatus("Unsupported file type. Use JPG, PNG, WEBP, HEIC, or PDF.", "error");
+          return;
+        }}
+        if (file.size > 20 * 1024 * 1024) {{
+          setStatus("File too large (max 20 MB).", "error");
+          return;
+        }}
+
+        selectedFile = file;
+        setStatus("");
+        docResults.classList.remove("visible");
+        fileNameEl.textContent = file.name;
+        filePreview.style.display = "block";
+
+        if (file.type.startsWith("image/")) {{
+          const reader = new FileReader();
+          reader.onload = (e) => {{
+            previewImg.src = e.target.result;
+            previewImg.style.display = "block";
+          }};
+          reader.readAsDataURL(file);
+        }} else {{
+          previewImg.style.display = "none";
+        }}
+
+        analyzeBtn.disabled = false;
+      }}
+
+      dropZone.addEventListener("dragover", (e) => {{
+        e.preventDefault();
+        dropZone.classList.add("drag-over");
+      }});
+
+      dropZone.addEventListener("dragleave", () => {{
+        dropZone.classList.remove("drag-over");
+      }});
+
+      dropZone.addEventListener("drop", (e) => {{
+        e.preventDefault();
+        dropZone.classList.remove("drag-over");
+        const file = e.dataTransfer.files[0];
+        if (file) handleFileSelected(file);
+      }});
+
+      fileInput.addEventListener("change", () => {{
+        const file = fileInput.files[0];
+        if (file) handleFileSelected(file);
+      }});
+
+      analyzeBtn.addEventListener("click", async () => {{
+        if (!selectedFile) return;
+
+        analyzeBtn.disabled = true;
+        analyzeBtn.textContent = "Analyzing...";
+        setStatus("Sending to Vision AI...", "loading");
+        docResults.classList.remove("visible");
+
+        try {{
+          const formData = new FormData();
+          formData.append("file", selectedFile);
+          const response = await fetch("/api/analyze-document", {{
+            method: "POST",
+            body: formData,
+          }});
+
+          if (!response.ok) {{
+            let detail = `Error ${{response.status}}`;
+            try {{
+              const json = await response.json();
+              detail = json.detail || detail;
+            }} catch (_err) {{}}
+            throw new Error(detail);
+          }}
+
+          const data = await response.json();
+          renderResults(data);
+          setStatus("");
+        }} catch (err) {{
+          setStatus(`Analysis failed: ${{err.message}}`, "error");
+        }} finally {{
+          analyzeBtn.disabled = false;
+          analyzeBtn.textContent = "Analyze Document";
+        }}
+      }});
+
+      extractedToggle.addEventListener("click", () => {{
+        const isOpen = extractedText.classList.toggle("open");
+        extractedToggle.textContent = isOpen ? "Hide raw text ▴" : "Show raw text ▾";
+      }});
+    }})();
 
     loadAnalysis();
   </script>
