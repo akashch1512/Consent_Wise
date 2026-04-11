@@ -1,6 +1,8 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.api.routes import page_router, router
+from app.api.tts_routes import tts_router
+from app.api.chat_routes import chat_router
 
 app = FastAPI(
     title="ConsentGuard AI",
@@ -24,6 +26,8 @@ app.add_middleware(
 
 app.include_router(router)
 app.include_router(page_router)
+app.include_router(tts_router)
+app.include_router(chat_router)
 
 @app.get("/health")
 async def health_check():
