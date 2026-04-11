@@ -1443,6 +1443,39 @@
           </svg>
         </button>
       </div>
+      </div>
+    </section>
+
+    <!-- ── Interactive Quiz ──────────────────────────────────────────── -->
+    <section class="section" id="quiz-section" style="display: none;">
+      <div class="section-head">
+        <h2 class="section-title">Test Your Knowledge</h2>
+        <div class="section-meta" id="quiz-meta">Quiz</div>
+      </div>
+      <div class="chat-input-row" style="margin-top: 0; margin-bottom: 12px; justify-content: space-between;">
+        <select id="quiz-lang" class="tts-select" style="max-width: 110px;">
+          <option value="en-IN">Eng (IN)</option>
+          <option value="hi-IN">Hindi</option>
+          <option value="mr-IN">Marathi</option>
+          <option value="ta-IN">Tamil</option>
+          <option value="te-IN">Telugu</option>
+          <option value="bn-IN">Bengali</option>
+          <option value="gu-IN">Gujarati</option>
+          <option value="kn-IN">Kannada</option>
+          <option value="ml-IN">Malayalam</option>
+          <option value="pa-IN">Punjabi</option>
+        </select>
+        <button id="quiz-generate-btn" class="secondary-btn" style="flex: 1; margin-left: 8px;">Generate Quiz</button>
+      </div>
+      <div id="quiz-container" style="display: none; flex-direction: column; gap: 8px;">
+        <div class="chat-window" style="background: #fff; padding: 12px; font-weight: 500; font-size: 13.5px;" id="quiz-question-text">
+        </div>
+        <button id="quiz-opt-a" class="secondary-btn" style="text-align: left; height: auto; padding: 10px; font-weight: 400; line-height: 1.4; border: 1px solid #e2e8f0; white-space: normal;"></button>
+        <button id="quiz-opt-b" class="secondary-btn" style="text-align: left; height: auto; padding: 10px; font-weight: 400; line-height: 1.4; border: 1px solid #e2e8f0; white-space: normal;"></button>
+        <div id="quiz-explanation-box" style="display: none; padding: 10px; border-radius: 8px; background: #f8fafc; font-size: 12.5px; border-left: 3px solid #6366f1; margin-top: 4px; line-height: 1.4;">
+        </div>
+        <button id="quiz-next-btn" class="primary-btn" style="display: none; margin-top: 4px;">Next Question</button>
+      </div>
     </section>
   </main>
 

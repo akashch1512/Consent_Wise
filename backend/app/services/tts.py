@@ -127,6 +127,46 @@ def _extract_audio(response_json: dict) -> tuple[str, str]:
     raise HTTPException(status_code=502, detail="Gemini TTS response contained no audio data.")
 
 
+async def _translate_text(text: str, language_code: str, client: httpx.AsyncClient, api_key: str) -> str:
+    if language_code.startswith("en"):
+        return text
+        
+    language_map = {
+        "hi-IN": "Hindi",
+        "mr-IN": "Marathi",
+        "ta-IN": "Tamil",
+        "te-IN": "Telugu",
+        "bn-IN": "Bengali",
+        "gu-IN": "Gujarati",
+        "kn-IN": "Kannada",
+        "ml-IN": "Malayalam",
+        "pa-IN": "Punjabi",
+    }
+    target_lang = language_map.get(language_code)
+    if not target_lang:
+        return text
+
+    api_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent"
+    payload = {
+        "contents": [{"role": "user", "parts": [{"text": f"Translate the following text to {target_lang}. Only output the directly translated exact text, do not output anything else:\n\n{text}"}]}],
+        "generationConfig": {"temperature": 0.2}
+    }
+    headers = {"x-goog-api-key": api_key, "Content-Type": "application/json"}
+    
+    try:
+        resp = await client.post(api_url, json=payload, headers=headers)
+        if resp.status_code < 300:
+            data = resp.json()
+            candidates = data.get("candidates", [])
+            if candidates:
+                parts = candidates[0].get("content", {}).get("parts", [])
+                if parts and "text" in parts[0]:
+                    return parts[0]["text"].strip()
+    except Exception:
+        pass
+        
+    return text
+
 async def generate_speech(text: str, language_code: str = "en-IN", voice_name: str = "Kore") -> dict:
     import re
     api_key = _get_api_key()
@@ -135,34 +175,38 @@ async def generate_speech(text: str, language_code: str = "en-IN", voice_name: s
         "Content-Type": "application/json",
     }
     
-    # Split text into chunks to prevent hitting TTS limits or isolated safety filters
-    chunks = []
-    current_chunk = ""
-    # Split by punctuation or newlines
-    sentences = re.split(r'([.?!]+|\n+)', text)
-    
-    for i in range(0, len(sentences), 2):
-        sentence = sentences[i]
-        punct = sentences[i+1] if i + 1 < len(sentences) else ""
-        segment = sentence + punct
-        
-        # If segment is huge by itself, we might still have to split it, but usually this is fine.
-        if len(current_chunk) + len(segment) < 400:
-            current_chunk += segment
-        else:
-            if current_chunk.strip(): 
-                chunks.append(current_chunk.strip())
-            current_chunk = segment
-            
-    if current_chunk.strip():
-        chunks.append(current_chunk.strip())
-        
-    if not chunks:
-        chunks = [text.strip()]
-
     all_pcm_bytes = bytearray()
 
     async with httpx.AsyncClient(timeout=60.0) as client:
+        # 1. Perform translation of the base string to the requested language 
+        #    to prevent the TTS engine from attempting contextual translation limits
+        translated_text = await _translate_text(text, language_code, client, api_key)
+        
+        # 2. Split text into chunks to prevent hitting TTS limits or isolated safety filters
+        chunks = []
+        current_chunk = ""
+        # Split by punctuation or newlines
+        sentences = re.split(r'([.?!]+|\n+)', translated_text)
+        
+        for i in range(0, len(sentences), 2):
+            sentence = sentences[i]
+            punct = sentences[i+1] if i + 1 < len(sentences) else ""
+            segment = sentence + punct
+            
+            if len(current_chunk) + len(segment) < 400:
+                current_chunk += segment
+            else:
+                if current_chunk.strip(): 
+                    chunks.append(current_chunk.strip())
+                current_chunk = segment
+                
+        if current_chunk.strip():
+            chunks.append(current_chunk.strip())
+            
+        if not chunks:
+            chunks = [translated_text.strip() if translated_text.strip() else text.strip()]
+
+        # 3. Generate TTS for each chunk sequentially
         for chunk in chunks:
             if not chunk: continue
             payload = _build_tts_payload(chunk, language_code, voice_name)

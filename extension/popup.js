@@ -45,8 +45,22 @@ const chatInput = document.getElementById("chat-input");
 const chatSendBtn = document.getElementById("chat-send-btn");
 const chatLang = document.getElementById("chat-lang");
 const chatMicBtn = document.getElementById("chat-mic-btn");
+const openDashboardBtn = document.getElementById("open-dashboard");
+const footerLink = document.getElementById("footer-link");
+
+const quizSection = document.getElementById("quiz-section");
+const quizLang = document.getElementById("quiz-lang");
+const quizGenerateBtn = document.getElementById("quiz-generate-btn");
+const quizContainer = document.getElementById("quiz-container");
+const quizQuestionText = document.getElementById("quiz-question-text");
+const quizOptA = document.getElementById("quiz-opt-a");
+const quizOptB = document.getElementById("quiz-opt-b");
+const quizExplanationBox = document.getElementById("quiz-explanation-box");
+const quizNextBtn = document.getElementById("quiz-next-btn");
 
 let chatHistory = [];
+let currentQuizData = [];
+let currentQuizIndex = 0;
 let latestOriginalText = "";
 let isListening = false;
 let speechBaseValue = "";
@@ -113,7 +127,7 @@ function openLatestReport() {
     openUrl(data.latestDashboardUrl || FALLBACK_REPORT_URL);
   });
 }
-
+// hello
 function getDangerTheme(score) {
   if (score >= 75) {
     return {
@@ -226,9 +240,9 @@ function sanitizeAnalysisPayload(data) {
   const summary = extractLikelySummary(data.summary || "");
   const keyPoints = Array.isArray(data.key_points)
     ? data.key_points
-        .map((item) => extractLikelySummary(item))
-        .filter(Boolean)
-        .filter((item) => !looksLikeRawEnvelope(item))
+      .map((item) => extractLikelySummary(item))
+      .filter(Boolean)
+      .filter((item) => !looksLikeRawEnvelope(item))
     : [];
 
   return {
@@ -271,6 +285,7 @@ function setAnalysisState({
     renderPointList(reputationExamples, [], "Checking for known reputation concerns...", "list-item");
     ttsControls.style.display = "none";
     chatSection.style.display = "none";
+    if (quizSection) quizSection.style.display = "none";
     return;
   }
 
@@ -290,14 +305,16 @@ function setAnalysisState({
   setLoginSafety(loginSafety, loginSafetyText);
   renderPointList(summaryPoints, keyPoints, "No key points extracted yet.", "chip");
   renderPointList(reputationExamples, badExamples, "No verified bad history was identified from this analysis.", "list-item");
-  
+
   if (summary && summary !== "Analyze a page with terms, sign-in, consent, or payment language to populate this summary.") {
     ttsControls.style.display = "flex";
     chatSection.style.display = "block";
+    if (quizSection) quizSection.style.display = "block";
     resetChat();
   } else {
     ttsControls.style.display = "none";
     chatSection.style.display = "none";
+    if (quizSection) quizSection.style.display = "none";
   }
 }
 
@@ -589,7 +606,7 @@ function setMicState(listening) {
 
 function stopSpeechRecognition() {
   if (isListening) {
-    chrome.runtime.sendMessage({ type: "stt-stop" }).catch(() => {});
+    chrome.runtime.sendMessage({ type: "stt-stop" }).catch(() => { });
   }
 }
 
@@ -663,7 +680,7 @@ if (chatSendBtn && chatInput && chatWindow) {
     if (!text) return;
 
     stopSpeechRecognition();
-    
+
     appendMessage("user", text);
     chatInput.value = "";
     speechBaseValue = "";
@@ -691,12 +708,12 @@ if (chatSendBtn && chatInput && chatWindow) {
           history: chatHistory
         })
       });
-      
+
       if (!res.ok) throw new Error("Chat failed.");
       const data = await res.json();
       chatHistory.push({ role: "user", text: questionWithLang });
       chatHistory.push({ role: "model", text: data.answer });
-      
+
       chatWindow.removeChild(thinkingDiv);
       appendMessage("model", data.answer);
     } catch (err) {
@@ -736,13 +753,13 @@ if (ttsPlayBtn) {
     ttsPlayBtn.textContent = "Listen";
     return;
   }
-  
+
   const textToSay = analysisSummary.textContent;
   if (!textToSay || textToSay.includes("Analyze a page")) return;
-  
+
   ttsPlayBtn.disabled = true;
   ttsPlayBtn.textContent = "Loading...";
-  
+
   try {
     const res = await fetch(`${BACKEND_URL}/api/tts`, {
       method: "POST",
@@ -753,14 +770,14 @@ if (ttsPlayBtn) {
         voice_name: "Kore"
       })
     });
-    
+
     if (!res.ok) throw new Error("TTS failed");
     const data = await res.json();
     ttsAudio.src = `data:${data.mime_type};base64,${data.audio_base64}`;
     await ttsAudio.play();
     isPlaying = true;
     ttsPlayBtn.textContent = "Stop";
-    
+
     ttsAudio.onended = () => {
       isPlaying = false;
       ttsPlayBtn.textContent = "Listen";
@@ -779,7 +796,150 @@ if (protectionToggle) protectionToggle.addEventListener("click", toggleProtectio
 if (openLatestBtn) openLatestBtn.addEventListener("click", openLatestReport);
 if (analyzeCurrentBtn) analyzeCurrentBtn.addEventListener("click", analyzeCurrentTab);
 
-loadStats();
+/* ── Interactive Quiz Logic ────────────────────────────────────────── */
+if (quizLang) {
+  quizLang.addEventListener("change", () => {
+    if (quizLang.value === "hi-IN" || quizLang.value === "mr-IN") {
+      document.body.style.fontFamily = "'Noto Sans Devanagari', 'Space Grotesk', sans-serif";
+      document.body.style.fontWeight = "500";
+    } else {
+      document.body.style.fontFamily = "'Space Grotesk', sans-serif";
+      document.body.style.fontWeight = "400";
+    }
+  });
+}
+
+function renderQuizQuestion(index) {
+  if (!currentQuizData || currentQuizData.length === 0) return;
+  if (index >= currentQuizData.length) {
+    quizQuestionText.textContent = "Great job! You've completed the quiz.";
+    quizOptA.style.display = "none";
+    quizOptB.style.display = "none";
+    quizExplanationBox.style.display = "none";
+    quizNextBtn.style.display = "none";
+    return;
+  }
+
+  const q = currentQuizData[index];
+  quizQuestionText.textContent = `Q${index + 1}: ${q.question}`;
+  quizOptA.textContent = `A) ${q.option_a}`;
+  quizOptB.textContent = `B) ${q.option_b}`;
+
+  // Reset states
+  quizOptA.style.display = "block";
+  quizOptB.style.display = "block";
+  quizOptA.style.borderColor = "#e2e8f0";
+  quizOptA.style.background = "#fff";
+  quizOptA.style.color = "#334155";
+  quizOptA.disabled = false;
+
+  quizOptB.style.borderColor = "#e2e8f0";
+  quizOptB.style.background = "#fff";
+  quizOptB.style.color = "#334155";
+  quizOptB.disabled = false;
+
+  quizExplanationBox.style.display = "none";
+  quizNextBtn.style.display = "none";
+}
+
+function handleQuizAnswer(selectedOpt, btnEl) {
+  const q = currentQuizData[currentQuizIndex];
+  const isCorrect = (selectedOpt === q.correct_option);
+
+  quizOptA.disabled = true;
+  quizOptB.disabled = true;
+
+  if (isCorrect) {
+    btnEl.style.borderColor = "#16a34a";
+    btnEl.style.background = "#dcfce7";
+    btnEl.style.color = "#166534";
+  } else {
+    btnEl.style.borderColor = "#dc2626";
+    btnEl.style.background = "#fee2e2";
+    btnEl.style.color = "#991b1b";
+
+    const correctBtn = (q.correct_option === "A") ? quizOptA : quizOptB;
+    correctBtn.style.borderColor = "#16a34a";
+  }
+
+  quizExplanationBox.textContent = q.explanation;
+  quizExplanationBox.style.display = "block";
+
+  if (currentQuizIndex < currentQuizData.length - 1) {
+    quizNextBtn.style.display = "block";
+  } else {
+    quizNextBtn.textContent = "Finish";
+    quizNextBtn.style.display = "block";
+    quizNextBtn.onclick = () => { renderQuizQuestion(999); };
+  }
+}
+
+if (quizGenerateBtn) {
+  quizGenerateBtn.addEventListener("click", async () => {
+    if (!latestOriginalText) {
+      alert("Please analyze a document first!");
+      return;
+    }
+
+    quizContainer.style.display = "flex";
+    quizQuestionText.textContent = "Loading engaging quiz locally formatted for you...";
+    quizOptA.style.display = "none";
+    quizOptB.style.display = "none";
+    quizExplanationBox.style.display = "none";
+    quizNextBtn.style.display = "none";
+    quizGenerateBtn.disabled = true;
+    quizGenerateBtn.textContent = "Generating...";
+
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/generate-quiz`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          document_context: latestOriginalText,
+          language_code: quizLang.value
+        })
+      });
+      if (!res.ok) throw new Error("Quiz generation failed.");
+
+      const data = await res.json();
+      if (data && data.questions && data.questions.length > 0) {
+        currentQuizData = data.questions;
+        currentQuizIndex = 0;
+        renderQuizQuestion(0);
+      } else {
+        throw new Error("No questions retrieved.");
+      }
+    } catch (err) {
+      console.error(err);
+      quizQuestionText.textContent = "Failed to generate quiz. Please try again.";
+    } finally {
+      quizGenerateBtn.disabled = false;
+      quizGenerateBtn.textContent = "Generate Quiz";
+    }
+  });
+}
+
+if (quizOptA) quizOptA.addEventListener("click", () => handleQuizAnswer("A", quizOptA));
+if (quizOptB) quizOptB.addEventListener("click", () => handleQuizAnswer("B", quizOptB));
+
+if (quizNextBtn) {
+  quizNextBtn.addEventListener("click", () => {
+    if (quizNextBtn.textContent === "Finish") return;
+    currentQuizIndex++;
+    renderQuizQuestion(currentQuizIndex);
+  });
+}
+
+if (openDashboardBtn) openDashboardBtn.addEventListener("click", openDashboard);
+if (openLatestBtn) openLatestBtn.addEventListener("click", openLatestReport);
+if (analyzeCurrentBtn) analyzeCurrentBtn.addEventListener("click", analyzeCurrentTab);
+if (footerLink) {
+  footerLink.addEventListener("click", (event) => {
+    event.preventDefault();
+    openDashboard();
+  });
+}
+
 loadProtectionState();
 setAnalysisState({});
 restoreLatestAnalysis();
@@ -790,19 +950,19 @@ setupSpeechRecognition();
 (function initDocUpload() {
   const VISION_API_URL = `${BACKEND_URL}/api/analyze-document`;
 
-  const dropZone      = document.getElementById("drop-zone");
-  const fileInput     = document.getElementById("doc-file-input");
-  const filePreview   = document.getElementById("doc-file-preview");
-  const previewImg    = document.getElementById("doc-preview-img");
-  const fileNameEl    = document.getElementById("doc-file-name");
-  const docStatus     = document.getElementById("doc-status");
-  const analyzeBtn    = document.getElementById("doc-analyze-btn");
-  const docResults    = document.getElementById("doc-results");
-  const docSummary    = document.getElementById("doc-summary");
-  const docKeyPoints  = document.getElementById("doc-key-points");
-  const docRisks      = document.getElementById("doc-risks");
-  const docHint       = document.getElementById("doc-hint");
-  const docIntent     = document.getElementById("doc-intent");
+  const dropZone = document.getElementById("drop-zone");
+  const fileInput = document.getElementById("doc-file-input");
+  const filePreview = document.getElementById("doc-file-preview");
+  const previewImg = document.getElementById("doc-preview-img");
+  const fileNameEl = document.getElementById("doc-file-name");
+  const docStatus = document.getElementById("doc-status");
+  const analyzeBtn = document.getElementById("doc-analyze-btn");
+  const docResults = document.getElementById("doc-results");
+  const docSummary = document.getElementById("doc-summary");
+  const docKeyPoints = document.getElementById("doc-key-points");
+  const docRisks = document.getElementById("doc-risks");
+  const docHint = document.getElementById("doc-hint");
+  const docIntent = document.getElementById("doc-intent");
   const extractedText = document.getElementById("doc-extracted-text");
   const extractedToggle = document.getElementById("doc-extracted-toggle");
 
@@ -833,7 +993,7 @@ setupSpeechRecognition();
 
   // ── Handle a selected file ──────────────────────────────────────────
   function handleFileSelected(file) {
-    const ALLOWED = ["image/jpeg","image/png","image/webp","image/heic","image/heif","application/pdf"];
+    const ALLOWED = ["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif", "application/pdf"];
     if (!ALLOWED.includes(file.type)) {
       setStatus("Unsupported file type. Use JPG, PNG, WEBP, HEIC, or PDF.", "error");
       return;
@@ -885,7 +1045,7 @@ setupSpeechRecognition();
 
       if (!response.ok) {
         let detail = `Error ${response.status}`;
-        try { const j = await response.json(); detail = j.detail || detail; } catch (_) {}
+        try { const j = await response.json(); detail = j.detail || detail; } catch (_) { }
         throw new Error(detail);
       }
 
@@ -905,10 +1065,10 @@ setupSpeechRecognition();
     docSummary.textContent = data.summary || "—";
 
     renderList(docKeyPoints, data.key_points || [], false);
-    renderList(docRisks,    data.risks      || [], true);
+    renderList(docRisks, data.risks || [], true);
 
-    docHint.textContent   = data.accessibility_hint || "—";
-    docIntent.textContent = data.intent             || "—";
+    docHint.textContent = data.accessibility_hint || "—";
+    docIntent.textContent = data.intent || "—";
 
     extractedText.textContent = data.extracted_text || "—";
     extractedText.classList.remove("open");
@@ -944,7 +1104,7 @@ setupSpeechRecognition();
   // ── Status helper ───────────────────────────────────────────────────
   function setStatus(msg, type = "") {
     docStatus.textContent = msg;
-    docStatus.className   = "doc-status" + (type ? ` ${type}` : "");
+    docStatus.className = "doc-status" + (type ? ` ${type}` : "");
   }
 })();
 
@@ -987,7 +1147,7 @@ setupSpeechRecognition();
       chip.addEventListener("click", () => {
         // Toggle this chip
         chip.classList.toggle("selected");
-        
+
         // If they select "Equal Importance", maybe deselect others, but for a dummy form it's fine just to toggle.
         if (chip.textContent === "Equal Importance" && chip.classList.contains("selected")) {
           chips.forEach(c => { if (c !== chip) c.classList.remove("selected"); });

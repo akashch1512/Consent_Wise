@@ -36,5 +36,5 @@ async def generate_interactive_quiz(request: QuizRequest):
     }
     """
     
-    result = await generate_quiz(document_context=request.document_context)
+    result = await generate_quiz(document_context=request.document_context, language_code=request.language_code)
     return result
