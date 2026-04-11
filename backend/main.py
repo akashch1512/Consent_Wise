@@ -4,6 +4,7 @@ from app.api.routes import page_router, router
 from app.api.tts_routes import tts_router
 from app.api.chat_routes import chat_router
 from app.api.vision_routes import vision_router
+from app.api.quiz_routes import quiz_router
 
 app = FastAPI(
     title="ConsentGuard AI",
@@ -30,6 +31,7 @@ app.include_router(page_router)
 app.include_router(tts_router)
 app.include_router(chat_router)
 app.include_router(vision_router)
+app.include_router(quiz_router)
 
 @app.get("/health")
 async def health_check():
