@@ -152,6 +152,11 @@ async def analyze_extension_payload(
         danger_score=summary.danger_score,
         reputation_score=summary.reputation_score,
         login_safety=summary.login_safety,
+        login_guidance=_build_login_guidance(
+            summary.login_safety,
+            summary.reputation_score,
+            summary.danger_score,
+        ),
         reputation_summary=summary.reputation_summary,
         reputation_examples=summary.reputation_examples,
         summary=summary.summary,

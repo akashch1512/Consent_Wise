@@ -3,14 +3,19 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.routes import page_router, router
 
 app = FastAPI(
-    title="FastAPI Starter",
-    description="A minimal FastAPI starter application.",
-    version="0.1.0",
+    title="ConsentGuard AI",
+    description="Backend for the ConsentGuard AI Chrome extension — consent analysis, danger scoring, and site reputation.",
+    version="1.0.0",
 )
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:8000", "http://localhost:8000"],
+    allow_origins=[
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:8000",
+        "http://127.0.0.1:8000",
+    ],
     allow_origin_regex=r"chrome-extension://.*",
     allow_credentials=False,
     allow_methods=["*"],

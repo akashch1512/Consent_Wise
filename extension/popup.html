@@ -8,6 +8,17 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet" />
   <style>
+    @property --ring-angle {
+      syntax: "<angle>";
+      inherits: false;
+      initial-value: 8deg;
+    }
+    @property --ring-color {
+      syntax: "<color>";
+      inherits: false;
+      initial-value: #38bdf8;
+    }
+
     :root {
       --bg: #07111f;
       --card: rgba(11, 20, 35, 0.88);
@@ -18,10 +29,6 @@
       --warn: #f59e0b;
       --bad: #ef4444;
       --cool: #38bdf8;
-      --danger-angle: 8deg;
-      --danger-color: #38bdf8;
-      --reputation-angle: 8deg;
-      --reputation-color: #38bdf8;
     }
 
     * { box-sizing: border-box; }
@@ -160,6 +167,7 @@
       border-radius: 50%;
       display: grid;
       place-items: center;
+      transition: --ring-angle 0.7s cubic-bezier(0.34, 1.56, 0.64, 1), --ring-color 0.5s ease;
       background:
         radial-gradient(circle at center, #08111d 58%, transparent 59%),
         conic-gradient(var(--ring-color) 0 var(--ring-angle), rgba(148, 163, 184, 0.16) var(--ring-angle) 360deg);
@@ -416,7 +424,7 @@
       <div class="meter-grid">
         <div class="meter-card">
           <div class="meter-label">Danger Score</div>
-          <div class="meter-ring" id="danger-ring" style="--ring-angle: var(--danger-angle); --ring-color: var(--danger-color);">
+          <div class="meter-ring" id="danger-ring">
             <div>
               <div class="meter-value" id="danger-value">--</div>
               <div class="meter-caption">Risk</div>
@@ -428,7 +436,7 @@
 
         <div class="meter-card">
           <div class="meter-label">Reputation Score</div>
-          <div class="meter-ring" id="reputation-ring" style="--ring-angle: var(--reputation-angle); --ring-color: var(--reputation-color);">
+          <div class="meter-ring" id="reputation-ring">
             <div>
               <div class="meter-value" id="reputation-value">--</div>
               <div class="meter-caption">Trust</div>

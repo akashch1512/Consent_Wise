@@ -62,6 +62,7 @@ class AnalysisRecord(BaseModel):
     danger_score: int
     reputation_score: int
     login_safety: str
+    login_guidance: str
     reputation_summary: str
     reputation_examples: List[str]
     summary: str

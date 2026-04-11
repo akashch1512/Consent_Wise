@@ -1,5 +1,6 @@
 import json
 import os
+from pathlib import Path
 
 import httpx
 from fastapi import HTTPException
@@ -19,10 +20,17 @@ EXPECTED_RESPONSE_FIELDS = {
     "intent",
 }
 
-load_dotenv(".env")
+# Load .env relative to this file so the key is found regardless of cwd
+load_dotenv(Path(__file__).resolve().parent.parent.parent / ".env", override=True)
 
 PRIMARY_GEMINI_MODEL = "gemini-2.5-pro"
 FALLBACK_GEMINI_MODEL = "gemini-2.5-flash"
+
+
+# Maximum characters of page text to include in the prompt.
+# Keeps total input tokens low enough that gemini-2.5-pro can complete the
+# JSON output without hitting MAX_TOKENS from thinking-token overhead.
+_MAX_INPUT_CHARS = 3000
 
 
 def build_summary_prompt(text: str, title: str = "", url: str = "") -> str:
@@ -30,6 +38,8 @@ def build_summary_prompt(text: str, title: str = "", url: str = "") -> str:
         f"Page title: {title or 'Unknown'}\n"
         f"Page URL: {url or 'Unknown'}\n"
     )
+    # Trim aggressively so the model has plenty of room for its JSON reply.
+    trimmed_text = text.strip()[:_MAX_INPUT_CHARS]
     return (
         "You are a trusted assistant that reviews financial consent, payment, subscription, "
         "authorization, and privacy language for people with low literacy, language barriers, "
@@ -65,7 +75,7 @@ def build_summary_prompt(text: str, title: str = "", url: str = "") -> str:
         "Website context:\n"
         f"{site_context}\n"
         "Input text:\n"
-        f"{text}\n"
+        f"{trimmed_text}\n"
     )
 
 
@@ -86,7 +96,7 @@ def _build_payload(prompt: str) -> dict:
         ],
         "generationConfig": {
             "temperature": 0.1,
-            "maxOutputTokens": 2048,
+            "maxOutputTokens": 8192,
             "responseMimeType": "application/json",
             "responseSchema": {
                 "type": "OBJECT",
@@ -375,7 +385,7 @@ async def generate_summary(text: str, title: str = "", url: str = "") -> Summary
     }
     prompt = build_summary_prompt(text, title=title, url=url)
 
-    async with httpx.AsyncClient(timeout=45.0) as client:
+    async with httpx.AsyncClient(timeout=60.0) as client:
         primary_response = await _call_gemini(
             client,
             model=PRIMARY_GEMINI_MODEL,
@@ -404,7 +414,7 @@ async def generate_summary(text: str, title: str = "", url: str = "") -> Summary
         if fallback_result is not None:
             return fallback_result
 
-    raise HTTPException(
-        status_code=502,
-        detail="Gemini did not return a usable JSON analysis after retrying.",
-    )
+    # Both models returned MAX_TOKENS with no parseable JSON.
+    # Use the graceful fallback rather than a hard 502 so the user still gets
+    # something useful in the extension popup.
+    return _fallback_summary_from_text(text[:_MAX_INPUT_CHARS], text, url=url)

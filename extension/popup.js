@@ -4,6 +4,7 @@ const WEB_APP_URL = "http://localhost:3000";
 const BACKEND_URL = "http://localhost:8000";
 const ANALYZE_API_URL = `${BACKEND_URL}/api/extension/analyze`;
 const FALLBACK_REPORT_URL = `${BACKEND_URL}/dashboard`;
+const STORAGE_VERSION = 2;
 const INTERNAL_PREFIXES = ["chrome://", "chrome-extension://", "edge://", "about:"];
 const TRUSTED_APP_ORIGINS = new Set([
   "http://localhost:3000",
@@ -127,7 +128,7 @@ function updateRing(ring, valueEl, score, color) {
   }
 
   const clamped = Math.max(0, Math.min(100, score));
-  valueEl.textContent = String(clamped);
+  animateNumber(valueEl, 0, clamped, 700);
   ring.style.setProperty("--ring-angle", `${Math.max(8, clamped * 3.6)}deg`);
   ring.style.setProperty("--ring-color", color);
 }
@@ -157,6 +158,47 @@ function renderPointList(container, items, emptyLabel, className) {
     el.textContent = item;
     container.appendChild(el);
   });
+}
+
+function looksLikeRawEnvelope(text) {
+  const value = String(text || "").trim();
+  return value.startsWith("{") && value.includes("\"candidates\"") && value.includes("\"usageMetadata\"");
+}
+
+function extractLikelySummary(text) {
+  const value = String(text || "").trim();
+  if (!value) return "";
+
+  if (looksLikeRawEnvelope(value)) {
+    return "A previous cached analysis used an unreadable model response. Run Analyze Current Page again to refresh it.";
+  }
+
+  const summaryMatch = value.match(/"summary"\s*:\s*"([^"]+)/i);
+  if (summaryMatch && summaryMatch[1]) {
+    return summaryMatch[1].trim();
+  }
+
+  return value;
+}
+
+function sanitizeAnalysisPayload(data) {
+  const summary = extractLikelySummary(data.summary || "");
+  const keyPoints = Array.isArray(data.key_points)
+    ? data.key_points
+        .map((item) => extractLikelySummary(item))
+        .filter(Boolean)
+        .filter((item) => !looksLikeRawEnvelope(item))
+    : [];
+
+  return {
+    ...data,
+    summary: summary || "Summary unavailable.",
+    reputation_summary: extractLikelySummary(data.reputation_summary || "") || "No reputation summary available.",
+    key_points: keyPoints,
+    reputation_examples: Array.isArray(data.reputation_examples)
+      ? data.reputation_examples.map((item) => extractLikelySummary(item)).filter(Boolean)
+      : [],
+  };
 }
 
 function setAnalysisState({
@@ -220,6 +262,60 @@ function sendMessageToTab(tabId, message) {
   });
 }
 
+function wait(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Extract policy text from a tab — injects content script first if needed.
+ * Returns { text, title, url } or throws a user-friendly Error.
+ */
+async function ensureContentScriptAndGetText(tab) {
+  // ── Fast path: content script already running ──────────────────────────────
+  try {
+    const payload = await sendMessageToTab(tab.id, { action: "getPolicyText" });
+    if (payload && typeof payload.text === "string") return payload;
+  } catch (firstErr) {
+    const msg = firstErr.message || "";
+    const isConnectionErr =
+      msg.includes("Receiving end does not exist") ||
+      msg.includes("Could not establish connection") ||
+      msg.includes("No tab with id");
+
+    if (!isConnectionErr) throw firstErr; // some other error — propagate
+  }
+
+  // ── Inject content script programmatically then retry ──────────────────────
+  console.log("[ConsentGuard Popup] Content script not found — injecting now into tab", tab.id);
+  try {
+    await chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      files: ["content.js"],
+    });
+    await wait(300); // let the script initialise
+    const payload = await sendMessageToTab(tab.id, { action: "getPolicyText" });
+    if (payload && typeof payload.text === "string") return payload;
+  } catch (injectErr) {
+    console.warn("[ConsentGuard Popup] Script injection failed:", injectErr.message);
+  }
+
+  // ── Last-resort: extract text directly via one-shot executeScript ──────────
+  console.log("[ConsentGuard Popup] Falling back to direct text extraction.");
+  const [result] = await chrome.scripting.executeScript({
+    target: { tabId: tab.id },
+    func: () => ({
+      text: (document.body ? document.body.innerText : "").slice(0, 5000).trim(),
+      title: document.title || "",
+      url: window.location.href,
+    }),
+  });
+
+  if (!result || !result.result) {
+    throw new Error("Could not read page content. Try refreshing the page.");
+  }
+  return result.result;
+}
+
 function isRestrictedUrl(url = "") {
   return INTERNAL_PREFIXES.some((prefix) => url.startsWith(prefix));
 }
@@ -232,45 +328,37 @@ function isTrustedAppUrl(url = "") {
   }
 }
 
-function getLoginSafetyText(data) {
-  const safety = (data.login_safety || "").toLowerCase();
-  if (safety === "unsafe") {
-    return "Not safe to log in right now. Avoid entering credentials until the site is verified.";
-  }
-  if (safety === "safe") {
-    return "Looks reasonably safe for login, but still verify the domain before signing in.";
-  }
-  return "Use caution before logging in. Check the domain, terms, and data practices first.";
-}
-
 function renderAnalysis(data, sourceMeta) {
+  const normalized = sanitizeAnalysisPayload(data);
   setAnalysisState({
     meta: sourceMeta,
-    intent: data.intent || "Unknown intent",
-    summary: data.summary || "Summary unavailable.",
-    keyPoints: data.key_points || [],
-    dangerScore: data.danger_score,
-    reputationScore: data.reputation_score,
-    reputation: data.reputation_summary || "No reputation summary available.",
-    reputationExamples: data.reputation_examples || [],
-    loginSafety: data.login_safety || "Caution",
-    loginSafetyText: getLoginSafetyText(data),
+    intent: normalized.intent || "Unknown intent",
+    summary: normalized.summary,
+    keyPoints: normalized.key_points || [],
+    dangerScore: normalized.danger_score,
+    reputationScore: normalized.reputation_score,
+    reputation: normalized.reputation_summary,
+    reputationExamples: normalized.reputation_examples || [],
+    loginSafety: normalized.login_safety || "Caution",
+    loginSafetyText: normalized.login_guidance || "Use caution before logging in. Check the domain first.",
   });
 
   chrome.storage.local.set({
-    latestDashboardUrl: data.dashboard_url,
-    latestSummary: data.summary || "",
-    latestIntent: data.intent || "",
-    latestDangerScore: data.danger_score,
-    latestReputationScore: data.reputation_score,
-    latestReputationSummary: data.reputation_summary || "",
-    latestReputationExamples: data.reputation_examples || [],
-    latestLoginSafety: data.login_safety || "Caution",
-    latestKeyPoints: data.key_points || [],
+    latestStorageVersion: STORAGE_VERSION,
+    latestDashboardUrl: normalized.dashboard_url,
+    latestSummary: normalized.summary || "",
+    latestIntent: normalized.intent || "",
+    latestDangerScore: normalized.danger_score,
+    latestReputationScore: normalized.reputation_score,
+    latestReputationSummary: normalized.reputation_summary || "",
+    latestReputationExamples: normalized.reputation_examples || [],
+    latestLoginSafety: normalized.login_safety || "Caution",
+    latestLoginGuidance: normalized.login_guidance || "",
+    latestKeyPoints: normalized.key_points || [],
     latestMeta: sourceMeta,
   });
 
-  openLatestBtn.disabled = false;
+  if (openLatestBtn) openLatestBtn.disabled = false;
 }
 
 async function analyzeCurrentTab() {
@@ -294,10 +382,10 @@ async function analyzeCurrentTab() {
       throw new Error("Login and dashboard pages are intentionally excluded from interception. Open the target website you want to review.");
     }
 
-    const payload = await sendMessageToTab(tab.id, { action: "getPolicyText" });
+    const payload = await ensureContentScriptAndGetText(tab);
     const text = (payload && payload.text ? payload.text : "").trim();
     if (!text) {
-      throw new Error("No policy, login, or consent text was found on this page.");
+      throw new Error("No readable text was found on this page. Make sure the page has finished loading.");
     }
 
     const response = await fetch(ANALYZE_API_URL, {
@@ -323,8 +411,11 @@ async function analyzeCurrentTab() {
     ].filter(Boolean).join(" · ");
 
     renderAnalysis(data, sourceMeta);
-    chrome.storage.local.get(["tabsOpened"], (storage) => {
-      chrome.storage.local.set({ tabsOpened: (storage.tabsOpened || 0) + 1 });
+    chrome.storage.local.get(["tabsOpened", "interceptCount"], (storage) => {
+      chrome.storage.local.set({
+        tabsOpened: (storage.tabsOpened || 0) + 1,
+        interceptCount: (storage.interceptCount || 0) + 1,
+      });
       loadStats();
     });
   } catch (error) {
@@ -332,9 +423,7 @@ async function analyzeCurrentTab() {
     setAnalysisState({
       meta: "Scan blocked",
       intent: "Unavailable",
-      summary: error.message === "Could not establish connection. Receiving end does not exist."
-        ? "Refresh the current page once so the content script can attach, then analyze again."
-        : error.message,
+      summary: error.message,
       reputation: "No reputation scan could be completed.",
       reputationExamples: [],
       loginSafety: "Caution",
@@ -349,6 +438,7 @@ function restoreLatestAnalysis() {
   chrome.storage.local.get(
     [
       "latestDashboardUrl",
+      "latestStorageVersion",
       "latestSummary",
       "latestIntent",
       "latestDangerScore",
@@ -356,11 +446,29 @@ function restoreLatestAnalysis() {
       "latestReputationSummary",
       "latestReputationExamples",
       "latestLoginSafety",
+      "latestLoginGuidance",
       "latestKeyPoints",
       "latestMeta",
     ],
     (data) => {
       if (!data.latestSummary) return;
+      if ((data.latestStorageVersion || 0) < STORAGE_VERSION) {
+        chrome.storage.local.remove([
+          "latestDashboardUrl",
+          "latestStorageVersion",
+          "latestSummary",
+          "latestIntent",
+          "latestDangerScore",
+          "latestReputationScore",
+          "latestReputationSummary",
+          "latestReputationExamples",
+          "latestLoginSafety",
+          "latestLoginGuidance",
+          "latestKeyPoints",
+          "latestMeta",
+        ]);
+        return;
+      }
       renderAnalysis(
         {
           dashboard_url: data.latestDashboardUrl,
@@ -371,6 +479,7 @@ function restoreLatestAnalysis() {
           reputation_summary: data.latestReputationSummary,
           reputation_examples: data.latestReputationExamples || [],
           login_safety: data.latestLoginSafety,
+          login_guidance: data.latestLoginGuidance,
           key_points: data.latestKeyPoints || [],
         },
         data.latestMeta || "Latest saved report"
