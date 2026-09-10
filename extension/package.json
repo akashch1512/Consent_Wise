@@ -1,0 +1,12 @@
+{
+  "name": "consentwise-extension",
+  "version": "1.1.0",
+  "private": true,
+  "description": "ConsentWise AI browser extension (Manifest V3, no build step).",
+  "type": "module",
+  "scripts": {
+    "i18n:build": "node scripts/build-i18n.mjs",
+    "i18n:check": "node scripts/check-i18n.mjs",
+    "check": "node scripts/check-i18n.mjs && node -e \"['src/config/config.js','src/config/i18n.js','src/shared/identity.js','src/content/detect.js','src/content/content.js','src/background/service-worker.js','src/offscreen/offscreen.js','src/popup/state.js','src/popup/api.js','src/popup/popup.js'].forEach(f=>require('child_process').execSync('node --check '+f))\" && echo 'syntax ok'"
+  }
+}

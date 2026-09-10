@@ -1,1270 +1,853 @@
 "use strict";
 
-// Backend wiring lives in config.js (loaded first); i18n strings in i18n.js.
-const { WEB_APP_URL, API, TRUSTED_ORIGINS } = ConsentWise;
-const STORAGE_VERSION = 2;
-const INTERNAL_PREFIXES = ["chrome://", "chrome-extension://", "edge://", "about:"];
-
-/** Active popup i18n dictionaries (keyed by language code). */
-const I18N = ConsentWiseI18n.dictionaries;
-
-const openLatestBtn = document.getElementById("open-latest");
-const analyzeCurrentBtn = document.getElementById("analyze-current");
-const statBlocked = document.getElementById("stat-blocked");
-const statTabs = document.getElementById("stat-tabs");
-const protectionToggle = document.getElementById("protection-toggle");
-const protectionLabel = document.getElementById("protection-label");
-const dangerRing = document.getElementById("danger-ring");
-const dangerValue = document.getElementById("danger-value");
-const dangerTitle = document.getElementById("danger-title");
-const dangerCopy = document.getElementById("danger-copy");
-const reputationRing = document.getElementById("reputation-ring");
-const reputationValue = document.getElementById("reputation-value");
-const reputationTitle = document.getElementById("reputation-title");
-const reputationCopy = document.getElementById("reputation-copy");
-const loginBadge = document.getElementById("login-badge");
-const loginCopy = document.getElementById("login-copy");
-const analysisMeta = document.getElementById("analysis-meta");
-const analysisIntent = document.getElementById("analysis-intent");
-const analysisSummary = document.getElementById("analysis-summary");
-const summaryPoints = document.getElementById("summary-points");
-const reputationSummary = document.getElementById("reputation-summary");
-const reputationExamples = document.getElementById("reputation-examples");
-const ttsControls = document.getElementById("tts-controls");
-const ttsLang = document.getElementById("tts-lang");
-const ttsPlayBtn = document.getElementById("tts-play-btn");
-const ttsAudio = document.getElementById("tts-audio");
-const chatSection = document.getElementById("chat-section");
-const chatWindow = document.getElementById("chat-window");
-const chatInput = document.getElementById("chat-input");
-const chatSendBtn = document.getElementById("chat-send-btn");
-const chatLang = document.getElementById("chat-lang");
-const chatMicBtn = document.getElementById("chat-mic-btn");
-const openDashboardBtn = document.getElementById("open-dashboard");
-const footerLink = document.getElementById("footer-link");
-
-const quizSection = document.getElementById("quiz-section");
-const quizLang = document.getElementById("quiz-lang");
-const quizGenerateBtn = document.getElementById("quiz-generate-btn");
-const quizContainer = document.getElementById("quiz-container");
-const quizQuestionText = document.getElementById("quiz-question-text");
-const quizOptA = document.getElementById("quiz-opt-a");
-const quizOptB = document.getElementById("quiz-opt-b");
-const quizExplanationBox = document.getElementById("quiz-explanation-box");
-const quizNextBtn = document.getElementById("quiz-next-btn");
-const globalLang = document.getElementById("global-lang");
-
-let chatHistory = [];
-let currentQuizData = [];
-let currentQuizIndex = 0;
-let latestOriginalText = "";
-let isListening = false;
-let speechBaseValue = "";
-
-function applyProtectionUI(enabled) {
-  if (!protectionToggle || !protectionLabel) return;
-  protectionToggle.classList.toggle("is-on", enabled);
-  protectionToggle.setAttribute("aria-pressed", enabled ? "true" : "false");
-  protectionLabel.classList.toggle("off", !enabled);
-  protectionLabel.textContent = enabled ? t("protectionOn") : t("protectionOff");
-}
-
-function loadProtectionState() {
-  chrome.storage.local.get(["protectionEnabled"], (data) => {
-    applyProtectionUI(data.protectionEnabled !== false);
-  });
-}
-
-function toggleProtection() {
-  chrome.storage.local.get(["protectionEnabled"], (data) => {
-    const next = data.protectionEnabled === false;
-    chrome.storage.local.set({ protectionEnabled: next }, () => {
-      applyProtectionUI(next);
-    });
-  });
-}
-
-// Speech-to-text is handled via an offscreen document (Chrome MV3)
-// to work around the popup's sandbox restrictions on mic access.
-
-function animateNumber(el, from, to, duration) {
-  if (!el) return;
-  const start = performance.now();
-  function update(now) {
-    const t = Math.min((now - start) / duration, 1);
-    const ease = 1 - Math.pow(1 - t, 3);
-    el.textContent = Math.round(from + (to - from) * ease);
-    if (t < 1) requestAnimationFrame(update);
-  }
-  requestAnimationFrame(update);
-}
-
-function loadStats() {
-  chrome.storage.local.get(["interceptCount", "tabsOpened"], (data) => {
-    if (chrome.runtime.lastError) {
-      console.warn("[ConsentWise Popup] Storage error:", chrome.runtime.lastError.message);
-      return;
-    }
-    animateNumber(statBlocked, 0, data.interceptCount || 0, 500);
-    animateNumber(statTabs, 0, data.tabsOpened || 0, 500);
-  });
-}
-
-function openUrl(url) {
-  chrome.tabs.create({ url, active: true });
-}
-
-function openDashboard() {
-  openUrl(WEB_APP_URL);
-}
-
-function openLatestReport() {
-  chrome.storage.local.get(["latestDashboardUrl"], (data) => {
-    openUrl(data.latestDashboardUrl || API.dashboard);
-  });
-}
-// hello
-function getDangerTheme(score) {
-  if (score >= 75) {
-    return {
-      title: "High danger",
-      color: "#dc2626",
-      copy: "This page contains risky or harmful language.",
-    };
-  }
-  if (score >= 40) {
-    return {
-      title: "Use caution",
-      color: "#d97706",
-      copy: "Important terms need a careful read before you proceed.",
-    };
-  }
-  return {
-    title: "Lower danger",
-    color: "#16a34a",
-    copy: "No major risk signals were found in the visible text.",
-  };
-}
-
-function getReputationTheme(score) {
-  if (score >= 75) {
-    return {
-      title: "Strong reputation",
-      color: "#16a34a",
-      copy: "The site appears more trustworthy overall.",
-    };
-  }
-  if (score >= 40) {
-    return {
-      title: "Mixed reputation",
-      color: "#d97706",
-      copy: "The site may be acceptable, but it deserves extra review.",
-    };
-  }
-  return {
-    title: "Poor reputation",
-    color: "#dc2626",
-    copy: "The site shows weak trust signals or concerning patterns.",
-  };
-}
-
-function updateRing(ring, valueEl, score, color) {
-  if (!ring || !valueEl || typeof score !== "number" || Number.isNaN(score)) {
-    if (valueEl) valueEl.textContent = "--";
-    if (ring) {
-      ring.style.setProperty("--ring-angle", "8deg");
-      ring.style.setProperty("--ring-color", "#6366f1");
-    }
-    return;
-  }
-
-  const clamped = Math.max(0, Math.min(100, score));
-  animateNumber(valueEl, 0, clamped, 700);
-  ring.style.setProperty("--ring-angle", `${Math.max(8, clamped * 3.6)}deg`);
-  ring.style.setProperty("--ring-color", color);
-}
-
-function setLoginSafety(safety, copy) {
-  const normalized = (safety || "Caution").toLowerCase();
-  const className = normalized === "safe" ? "safe" : normalized === "unsafe" ? "unsafe" : "caution";
-  loginBadge.className = `badge ${className}`;
-  loginBadge.textContent = normalized === "safe" ? t("safe") : normalized === "unsafe" ? t("unsafe") : t("caution");
-  loginCopy.textContent = copy;
-}
-
-function renderPointList(container, items, emptyLabel, className) {
-  container.innerHTML = "";
-  const values = Array.isArray(items) ? items.filter(Boolean) : [];
-  if (!values.length) {
-    const fallback = document.createElement("div");
-    fallback.className = className;
-    fallback.textContent = emptyLabel;
-    container.appendChild(fallback);
-    return;
-  }
-
-  values.slice(0, 4).forEach((item) => {
-    const el = document.createElement("div");
-    el.className = className;
-    el.textContent = item;
-    container.appendChild(el);
-  });
-}
-
-function looksLikeRawEnvelope(text) {
-  const value = String(text || "").trim();
-  return value.startsWith("{") && value.includes("\"candidates\"") && value.includes("\"usageMetadata\"");
-}
-
-function extractLikelySummary(text) {
-  const value = String(text || "").trim();
-  if (!value) return "";
-
-  if (looksLikeRawEnvelope(value)) {
-    return "A previous cached analysis used an unreadable model response. Run Analyze Current Page again to refresh it.";
-  }
-
-  const summaryMatch = value.match(/"summary"\s*:\s*"([^"]+)/i);
-  if (summaryMatch && summaryMatch[1]) {
-    return summaryMatch[1].trim();
-  }
-
-  return value;
-}
-
-function sanitizeAnalysisPayload(data) {
-  const summary = extractLikelySummary(data.summary || "");
-  const keyPoints = Array.isArray(data.key_points)
-    ? data.key_points
-      .map((item) => extractLikelySummary(item))
-      .filter(Boolean)
-      .filter((item) => !looksLikeRawEnvelope(item))
-    : [];
-
-  return {
-    ...data,
-    summary: summary || "Summary unavailable.",
-    reputation_summary: extractLikelySummary(data.reputation_summary || "") || "No reputation summary available.",
-    key_points: keyPoints,
-    reputation_examples: Array.isArray(data.reputation_examples)
-      ? data.reputation_examples.map((item) => extractLikelySummary(item)).filter(Boolean)
-      : [],
-  };
-}
-
-function setAnalysisState({
-  meta = "Waiting for scan",
-  intent = "No site classified",
-  summary = "Analyze a page with terms, sign-in, consent, or payment language to populate this summary.",
-  keyPoints = [],
-  dangerScore,
-  reputationScore,
-  reputation = "Reputation details will appear here after a scan.",
-  reputationExamples: badExamples = [],
-  loginSafety = "Caution",
-  loginSafetyText = "Analyze a site before entering credentials.",
-  loading = false,
-}) {
-  analysisMeta.textContent = meta;
-
-  analysisIntent.textContent = intent;
-  analysisSummary.textContent = summary;
-  reputationSummary.textContent = reputation;
-
-  if (loading) {
-    dangerTitle.textContent = t("scanning");
-    dangerCopy.textContent = t("waitingAnalysis");
-    reputationTitle.textContent = t("checkingSite");
-    reputationCopy.textContent = t("waitingAnalysis");
-    updateRing(reputationRing, reputationValue, undefined);
-    setLoginSafety("Caution", t("analyzeSite"));
-    renderPointList(summaryPoints, [], t("preparing") + "...", "chip");
-    renderPointList(reputationExamples, [], t("checkingSite") + "...", "list-item");
-    if (ttsControls) ttsControls.style.display = "none";
-    if (chatSection) chatSection.style.display = "none";
-    if (quizSection) quizSection.style.display = "none";
-    return;
-  }
-
-  const hasDangerScore = typeof dangerScore === "number" && !Number.isNaN(dangerScore);
-  const hasReputationScore = typeof reputationScore === "number" && !Number.isNaN(reputationScore);
-  const dangerTheme = getDangerTheme(hasDangerScore ? dangerScore : 0);
-  const reputationTheme = getReputationTheme(hasReputationScore ? reputationScore : 0);
-
-  updateRing(dangerRing, dangerValue, hasDangerScore ? dangerScore : undefined, dangerTheme.color);
-  updateRing(reputationRing, reputationValue, hasReputationScore ? reputationScore : undefined, reputationTheme.color);
-
-  dangerTitle.textContent = hasDangerScore ? `${dangerTheme.title} · ${dangerScore}/100` : "Ready to Scan";
-  dangerCopy.textContent = hasDangerScore ? dangerTheme.copy : "Analyze a page to generate a risk score.";
-  reputationTitle.textContent = hasReputationScore ? `${reputationTheme.title} · ${reputationScore}/100` : "Awaiting Site Check";
-  reputationCopy.textContent = hasReputationScore ? reputationTheme.copy : "Analyze a page to estimate site reputation.";
-
-  setLoginSafety(loginSafety, loginSafetyText);
-  renderPointList(summaryPoints, keyPoints, t("noKeyPoints"), "chip");
-  renderPointList(reputationExamples, badExamples, t("noBadHistory"), "list-item");
-
-  // Use the i18n key as sentinel — compare against ALL placeholder translations
-  const placeholderKey = "analyzePlaceholder";
-  const isPlaceholder = !summary || Object.values(I18N).some((d) => d[placeholderKey] === summary);
-  if (!isPlaceholder) {
-    if (ttsControls) ttsControls.style.display = "flex";
-    if (chatSection) chatSection.style.display = "block";
-    if (quizSection) quizSection.style.display = "block";
-    if (chatSection) resetChat();
-  } else {
-    if (ttsControls) ttsControls.style.display = "none";
-    if (chatSection) chatSection.style.display = "none";
-    if (quizSection) quizSection.style.display = "none";
-  }
-}
-
-function sendMessageToTab(tabId, message) {
-  return new Promise((resolve, reject) => {
-    chrome.tabs.sendMessage(tabId, message, (response) => {
-      if (chrome.runtime.lastError) {
-        reject(new Error(chrome.runtime.lastError.message));
-        return;
-      }
-      resolve(response);
-    });
-  });
-}
-
-function wait(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
 /**
- * Extract policy text from a tab — injects content script first if needed.
- * Returns { text, title, url } or throws a user-friendly Error.
+ * ConsentWise AI — popup (orchestrator)
+ * Storage schema in state.js · network in api.js · strings in i18n.js.
  */
-async function ensureContentScriptAndGetText(tab) {
-  // ── Fast path: content script already running ──────────────────────────────
-  try {
-    const payload = await sendMessageToTab(tab.id, { action: "getPolicyText" });
-    if (payload && typeof payload.text === "string") return payload;
-  } catch (firstErr) {
-    const msg = firstErr.message || "";
-    const isConnectionErr =
-      msg.includes("Receiving end does not exist") ||
-      msg.includes("Could not establish connection") ||
-      msg.includes("No tab with id");
+(function () {
+  const { TRUSTED_ORIGINS, API } = ConsentWise;
+  const { KEYS } = CWState;
+  const I18N = ConsentWiseI18n.dictionaries;
+  const INTERNAL = ["chrome://", "chrome-extension://", "edge://", "about:", "view-source:"];
 
-    if (!isConnectionErr) throw firstErr; // some other error — propagate
+  const $ = (id) => document.getElementById(id);
+  const on = (el, ev, fn, opts) => el && el.addEventListener(ev, fn, opts);
+
+  // ── i18n ────────────────────────────────────────────────────────────────
+  const langSelect = $("global-lang");
+  const currentLang = () => (langSelect && langSelect.value) || ConsentWiseI18n.FALLBACK_LANG;
+  const t = (key) => ConsentWiseI18n.translate(currentLang(), key);
+
+  const DEVANAGARI = new Set(["hi-IN", "mr-IN"]);
+  function applyLang(lang) {
+    document.documentElement.lang = lang.split("-")[0];
+    document.body.style.fontWeight = DEVANAGARI.has(lang) ? "500" : "";
+    ConsentWiseI18n.apply(lang);
+    // Elements with on/off variants are re-synced by their owners.
+    syncProtectionLabel();
+    if (lastRecord) renderAnalysis(lastRecord.data, lastRecord.meta);
+    else renderNotScanned();
   }
 
-  // ── Inject content script programmatically then retry ──────────────────────
-  console.log("[ConsentWise Popup] Content script not found — injecting now into tab", tab.id);
-  try {
+  // ── Banner (replaces alert — UX-5) ──────────────────────────────────────
+  const banner = $("banner");
+  const bannerText = $("banner-text");
+  let bannerTimer = 0;
+  function showBanner(msg, kind = "info") {
+    if (!banner) return;
+    bannerText.textContent = msg;
+    banner.classList.toggle("err", kind === "error");
+    banner.classList.add("show");
+    clearTimeout(bannerTimer);
+    if (kind !== "error") bannerTimer = setTimeout(hideBanner, 6000);
+  }
+  function hideBanner() {
+    if (banner) banner.classList.remove("show");
+  }
+  on($("banner-close"), "click", hideBanner);
+
+  // ── Tabs (roving focus, aria — D2) ─────────────────────────────────────
+  const tabs = Array.from(document.querySelectorAll('[role="tab"]'));
+  const panels = Array.from(document.querySelectorAll('[role="tabpanel"]'));
+  function showTab(name, focus) {
+    tabs.forEach((tab) => {
+      const sel = tab.dataset.tab === name;
+      tab.setAttribute("aria-selected", sel ? "true" : "false");
+      tab.tabIndex = sel ? 0 : -1;
+      if (sel && focus) tab.focus();
+    });
+    panels.forEach((p) => p.classList.toggle("active", p.dataset.panel === name));
+    hideBanner();
+  }
+  tabs.forEach((tab, i) => {
+    on(tab, "click", () => showTab(tab.dataset.tab));
+    on(tab, "keydown", (e) => {
+      const dir = e.key === "ArrowRight" ? 1 : e.key === "ArrowLeft" ? -1 : 0;
+      if (!dir) return;
+      e.preventDefault();
+      showTab(tabs[(i + dir + tabs.length) % tabs.length].dataset.tab, true);
+    });
+  });
+
+  // ── Feature lock (Chat / Quiz need an analysis) ────────────────────────
+  let documentContext = "";
+  function setFeatureAccess(ready) {
+    document.querySelectorAll("[data-needs-analysis]").forEach((el) => (el.hidden = !ready));
+    document.querySelectorAll("[data-locked]").forEach((el) => (el.hidden = ready));
+    if (ttsBtn) ttsBtn.disabled = !ready;
+  }
+
+  // ── Verdict + summary + accordions (Scan — C3, D3) ─────────────────────
+  const verdict = $("verdict");
+  const vGlyph = $("verdict-glyph");
+  const vWord = $("verdict-word");
+  const vScore = $("verdict-score");
+  const vFill = $("verdict-fill");
+  const vTick = $("verdict-tick");
+  const vHint = $("verdict-hint");
+  const vMeta = $("verdict-meta");
+  const vTrust = $("verdict-trust");
+  const vSource = $("verdict-source");
+  const summaryCard = $("summary");
+  const summaryBody = $("summary-body");
+  const summaryMore = $("summary-more");
+  const accPoints = $("acc-points");
+  const pointsList = $("points-list");
+  const pointsCount = $("points-count");
+  const accRep = $("acc-reputation");
+  const repBody = $("rep-body");
+  const repList = $("rep-list");
+  const repBadge = $("rep-badge");
+  const accLogin = $("acc-login");
+  const loginBody = $("login-body");
+  const loginBadge = $("login-badge");
+  const fullReport = $("full-report-link");
+
+  let lastRecord = null; // { data, meta }
+  let lastRecordAt = 0;
+  const clampScore = (v) =>
+    typeof v === "number" && !Number.isNaN(v) ? Math.max(0, Math.min(100, Math.round(v))) : null;
+
+  function riskBand(score) {
+    if (score >= 75) return { cls: "high", glyph: "▲", word: t("verdictHigh") };
+    if (score >= 40) return { cls: "mid", glyph: "▲", word: t("verdictMid") };
+    return { cls: "low", glyph: "▲", word: t("verdictLow") };
+  }
+  function trustBand(score) {
+    if (score >= 75) return { cls: "low", word: t("trustStrong") };
+    if (score >= 40) return { cls: "mid", word: t("trustMixed") };
+    return { cls: "high", word: t("trustWeak") };
+  }
+  function relativeTime(ts) {
+    if (!ts) return "";
+    const s = Math.round((Date.now() - ts) / 1000);
+    if (s < 60) return t("justNow");
+    const m = Math.round(s / 60);
+    if (m < 60) return `${m} ${t("minAgo")}`;
+    const h = Math.round(m / 60);
+    if (h < 24) return `${h} ${t("hrAgo")}`;
+    return `${Math.round(h / 24)} ${t("dayAgo")}`;
+  }
+  function hostOf(url) {
+    try { return new URL(url).host; } catch { return url || ""; }
+  }
+
+  function fillList(ul, items, emptyKey, cap = 6) {
+    ul.textContent = "";
+    const values = (Array.isArray(items) ? items : []).map((x) => String(x || "").trim()).filter(Boolean);
+    if (!values.length) {
+      const li = document.createElement("li");
+      li.className = "empty";
+      li.textContent = t(emptyKey);
+      ul.appendChild(li);
+      return 0;
+    }
+    values.slice(0, cap).forEach((v) => {
+      const li = document.createElement("li");
+      li.textContent = v;
+      ul.appendChild(li);
+    });
+    return values.length;
+  }
+
+  function setAccordionOpen(el, key) {
+    on(el, "toggle", () => {
+      if (el.open) CWState.set({ [KEYS.openAccordion]: key });
+    });
+  }
+  setAccordionOpen(accPoints, "points");
+  setAccordionOpen(accRep, "reputation");
+  setAccordionOpen(accLogin, "login");
+
+  function renderNotScanned() {
+    verdict.className = "verdict";
+    vGlyph.textContent = "○";
+    vWord.textContent = t("notScanned");
+    vScore.textContent = "";
+    vFill.style.width = "0%";
+    vTick.hidden = true;
+    vHint.textContent = t("notScannedHint");
+    vMeta.hidden = true;
+    summaryCard.hidden = true;
+    [accPoints, accRep, accLogin].forEach((a) => (a.hidden = true));
+    fullReport.hidden = true;
+    setFeatureAccess(false);
+  }
+
+  function renderSkeleton() {
+    verdict.className = "verdict skeleton";
+    vGlyph.textContent = "○";
+    vWord.textContent = t("scanning");
+    vScore.textContent = "";
+    vFill.style.width = "100%";
+    vTick.hidden = true;
+    vHint.textContent = t("scanning");
+    vMeta.hidden = true;
+  }
+
+  function renderAnalysis(data, meta) {
+    lastRecord = { data, meta };
+    const danger = clampScore(data.danger_score);
+    const rep = clampScore(data.reputation_score);
+    const band = riskBand(danger ?? 0);
+
+    verdict.className = `verdict ${band.cls}`;
+    vGlyph.textContent = band.glyph;
+    vWord.textContent = band.word;
+    vScore.textContent = danger == null ? "" : `${danger}/100`;
+    vHint.textContent = t("verdictHint");
+    if (danger != null) {
+      vFill.style.width = `${danger}%`;
+      vTick.style.left = `${danger}%`;
+      vTick.hidden = false;
+    } else {
+      vFill.style.width = "0%";
+      vTick.hidden = true;
+    }
+
+    const url = data.url || (meta && meta.url) || "";
+    vMeta.hidden = false;
+    if (rep != null) {
+      const tb = trustBand(rep);
+      vTrust.textContent = `${t("siteTrust")}: ${tb.word} · ${rep}/100`;
+    } else {
+      vTrust.textContent = "";
+    }
+    const host = hostOf(url);
+    const when = relativeTime((meta && meta.at) || (lastRecordAt || Date.now()));
+    vSource.textContent = [host, when].filter(Boolean).join(" · ");
+
+    // Summary
+    const summary = String(data.summary || "").trim();
+    if (summary) {
+      summaryCard.hidden = false;
+      summaryBody.textContent = summary;
+      summaryBody.classList.add("clamp");
+      requestAnimationFrame(() => {
+        const clipped = summaryBody.scrollHeight - summaryBody.clientHeight > 4;
+        summaryMore.hidden = !clipped;
+        summaryMore.textContent = t("showMore");
+      });
+    } else {
+      summaryCard.hidden = true;
+    }
+
+    // Accordions
+    const nPoints = fillList(pointsList, data.key_points, "noKeyPoints");
+    accPoints.hidden = false;
+    pointsCount.textContent = nPoints ? String(nPoints) : "";
+
+    const repText = String(data.reputation_summary || "").trim();
+    repBody.textContent = repText || t("noReputation");
+    fillList(repList, data.reputation_examples, "noBadHistory");
+    accRep.hidden = false;
+    const tb = rep != null ? trustBand(rep) : null;
+    repBadge.textContent = tb ? tb.word : "";
+    repBadge.className = "acc__badge " + (tb ? tb.cls : "");
+
+    const loginSafety = String(data.login_safety || "Caution").trim();
+    loginBody.textContent = data.login_guidance || t("analyzeSite");
+    accLogin.hidden = false;
+    const ls = loginSafety.toLowerCase();
+    loginBadge.textContent = ls === "safe" ? t("safe") : ls === "unsafe" ? t("unsafe") : t("caution");
+    loginBadge.className = "acc__badge " + (ls === "safe" ? "low" : ls === "unsafe" ? "high" : "mid");
+
+    if (data.dashboard_url) {
+      fullReport.hidden = false;
+      fullReport.textContent = t("openFullReport");
+      fullReport.dataset.href = data.dashboard_url;
+    } else {
+      fullReport.hidden = true;
+    }
+
+    documentContext = data.original_text_excerpt || summary || "";
+    setFeatureAccess(Boolean(documentContext));
+
+    // Restore remembered accordion
+    CWState.get([KEYS.openAccordion]).then((d) => {
+      const which = d[KEYS.openAccordion];
+      if (which === "points") accPoints.open = true;
+      else if (which === "reputation") accRep.open = true;
+      else if (which === "login") accLogin.open = true;
+    });
+  }
+
+  on(summaryMore, "click", () => {
+    const clamped = summaryBody.classList.toggle("clamp");
+    summaryMore.textContent = clamped ? t("showMore") : t("showLess");
+  });
+  on(fullReport, "click", (e) => {
+    e.preventDefault();
+    const href = fullReport.dataset.href;
+    if (href) chrome.tabs.create({ url: href, active: true });
+  });
+
+  // ── Analyze (abort + skeleton — D4) ───────────────────────────────────
+  const analyzeBtn = $("analyze-btn");
+  let analyzeCtrl = null;
+
+  const isRestricted = (u = "") => INTERNAL.some((p) => u.startsWith(p));
+  const isOwnApp = (u = "") => {
+    try { return TRUSTED_ORIGINS.includes(new URL(u).origin); } catch { return false; }
+  };
+
+  async function getTabText(tab) {
+    try {
+      const r = await sendToTab(tab.id, { action: "getPolicyText" });
+      if (r && typeof r.text === "string") return r;
+    } catch (err) {
+      if (!/Receiving end does not exist|Could not establish connection|No tab with id/.test(err.message || "")) throw err;
+    }
     await chrome.scripting.executeScript({
       target: { tabId: tab.id },
-      files: ["src/config/config.js", "src/shared/identity.js", "src/content/content.js"],
+      files: ["src/config/config.js", "src/shared/identity.js", "src/content/detect.js", "src/content/content.js"],
     });
-    await wait(300); // let the script initialise
-    const payload = await sendMessageToTab(tab.id, { action: "getPolicyText" });
-    if (payload && typeof payload.text === "string") return payload;
-  } catch (injectErr) {
-    console.warn("[ConsentWise Popup] Script injection failed:", injectErr.message);
-  }
-
-  // ── Last-resort: extract text directly via one-shot executeScript ──────────
-  console.log("[ConsentWise Popup] Falling back to direct text extraction.");
-  const [result] = await chrome.scripting.executeScript({
-    target: { tabId: tab.id },
-    func: () => ({
-      text: (document.body ? document.body.innerText : "").slice(0, 5000).trim(),
-      title: document.title || "",
-      url: window.location.href,
-    }),
-  });
-
-  if (!result || !result.result) {
-    throw new Error("Could not read page content. Try refreshing the page.");
-  }
-  return result.result;
-}
-
-function isRestrictedUrl(url = "") {
-  return INTERNAL_PREFIXES.some((prefix) => url.startsWith(prefix));
-}
-
-function isTrustedAppUrl(url = "") {
-  try {
-    return TRUSTED_ORIGINS.includes(new URL(url).origin);
-  } catch {
-    return false;
-  }
-}
-
-function renderAnalysis(data, sourceMeta) {
-  const normalized = sanitizeAnalysisPayload(data);
-  setAnalysisState({
-    meta: sourceMeta,
-    intent: normalized.intent || "Unknown intent",
-    summary: normalized.summary,
-    keyPoints: normalized.key_points || [],
-    dangerScore: normalized.danger_score,
-    reputationScore: normalized.reputation_score,
-    reputation: normalized.reputation_summary,
-    reputationExamples: normalized.reputation_examples || [],
-    loginSafety: normalized.login_safety || "Caution",
-    loginSafetyText: normalized.login_guidance || "Use caution before logging in. Check the domain first.",
-  });
-
-  chrome.storage.local.set({
-    latestStorageVersion: STORAGE_VERSION,
-    latestDashboardUrl: normalized.dashboard_url,
-    latestSummary: normalized.summary || "",
-    latestIntent: normalized.intent || "",
-    latestDangerScore: normalized.danger_score,
-    latestReputationScore: normalized.reputation_score,
-    latestReputationSummary: normalized.reputation_summary || "",
-    latestReputationExamples: normalized.reputation_examples || [],
-    latestLoginSafety: normalized.login_safety || "Caution",
-    latestLoginGuidance: normalized.login_guidance || "",
-    latestKeyPoints: normalized.key_points || [],
-    latestMeta: sourceMeta,
-    latestOriginalText: data.original_text_excerpt || "",
-  });
-  latestOriginalText = data.original_text_excerpt || "";
-
-  if (openLatestBtn) openLatestBtn.disabled = false;
-}
-
-async function analyzeCurrentTab() {
-  const originalLabel = analyzeCurrentBtn ? analyzeCurrentBtn.textContent : t("analyzeBtn");
-  analyzeCurrentBtn.disabled = true;
-  analyzeCurrentBtn.textContent = t("analyzingBtn");
-  setAnalysisState({
-    meta: t("preparing"),
-    loading: true,
-  });
-
-  try {
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    if (!tab || !tab.id) {
-      throw new Error("No active tab found.");
-    }
-
-    if (isRestrictedUrl(tab.url || "")) {
-      throw new Error("This browser page cannot be scanned. Open a normal website tab first.");
-    }
-
-    if (isTrustedAppUrl(tab.url || "")) {
-      throw new Error("Login and dashboard pages are intentionally excluded from interception. Open the target website you want to review.");
-    }
-
-    const payload = await ensureContentScriptAndGetText(tab);
-    const text = (payload && payload.text ? payload.text : "").trim();
-    if (!text) {
-      throw new Error("No readable text was found on this page. Make sure the page has finished loading.");
-    }
-
-    const clientId = await ConsentWiseIdentity.getClientId().catch(() => null);
-    const response = await fetch(API.analyze, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        text,
-        title: payload.title || tab.title || "",
-        url: payload.url || tab.url || "",
-        source: "extension-popup",
-        client_id: clientId,
-      }),
-    });
-
-    if (!response) {
-      throw new Error("No response from analysis service.");
-    }
-
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok) {
-      throw new Error(data.detail || "Backend analysis failed.");
-    }
-
-    const sourceMeta = [
-      payload.title || tab.title || "",
-      `Danger ${data.danger_score}/100`,
-      `Reputation ${data.reputation_score}/100`,
-    ].filter(Boolean).join(" · ");
-
-    renderAnalysis(data, sourceMeta);
-    chrome.storage.local.get(["tabsOpened", "interceptCount"], (storage) => {
-      chrome.storage.local.set({
-        tabsOpened: (storage.tabsOpened || 0) + 1,
-        interceptCount: (storage.interceptCount || 0) + 1,
-      });
-      loadStats();
-    });
-  } catch (error) {
-    const rawMessage = (error && error.message ? error.message : "Analysis failed.").trim();
-    let message = rawMessage;
-
-    if (/Failed to fetch|NetworkError|fetch/i.test(rawMessage)) {
-      message = `Could not reach the local backend at ${ConsentWise.BACKEND_URL}. Start the backend server, then try again.`;
-    } else if (/Cannot access contents of url|Cannot access a chrome:|Missing host permission/i.test(rawMessage)) {
-      message = "This tab cannot be scanned right now. Refresh the page or switch to a normal website tab.";
-    }
-
-    console.warn("[ConsentWise Popup] Analysis failed:", message);
-    setAnalysisState({
-      meta: t("scanBlocked"),
-      intent: "Unavailable",
-      summary: message,
-      reputation: t("reputationPlaceholder"),
-      reputationExamples: [],
-      loginSafety: "Caution",
-      loginSafetyText: t("analyzeSite"),
-    });
-    alert(message);
-  } finally {
-    analyzeCurrentBtn.disabled = false;
-    analyzeCurrentBtn.textContent = originalLabel;
-  }
-}
-
-function restoreLatestAnalysis() {
-  chrome.storage.local.get(
-    [
-      "latestDashboardUrl",
-      "latestStorageVersion",
-      "latestSummary",
-      "latestIntent",
-      "latestDangerScore",
-      "latestReputationScore",
-      "latestReputationSummary",
-      "latestReputationExamples",
-      "latestLoginSafety",
-      "latestLoginGuidance",
-      "latestKeyPoints",
-      "latestMeta",
-      "latestOriginalText",
-    ],
-    (data) => {
-      if (!data.latestSummary) return;
-      if ((data.latestStorageVersion || 0) < STORAGE_VERSION) {
-        chrome.storage.local.remove([
-          "latestDashboardUrl",
-          "latestStorageVersion",
-          "latestSummary",
-          "latestIntent",
-          "latestDangerScore",
-          "latestReputationScore",
-          "latestReputationSummary",
-          "latestReputationExamples",
-          "latestLoginSafety",
-          "latestLoginGuidance",
-          "latestKeyPoints",
-          "latestMeta",
-          "latestOriginalText",
-        ]);
-        return;
-      }
-      latestOriginalText = data.latestOriginalText || "";
-      renderAnalysis(
-        {
-          dashboard_url: data.latestDashboardUrl,
-          summary: data.latestSummary,
-          intent: data.latestIntent,
-          danger_score: data.latestDangerScore,
-          reputation_score: data.latestReputationScore,
-          reputation_summary: data.latestReputationSummary,
-          reputation_examples: data.latestReputationExamples || [],
-          login_safety: data.latestLoginSafety,
-          login_guidance: data.latestLoginGuidance,
-          key_points: data.latestKeyPoints || [],
-        },
-        data.latestMeta || "Latest saved report"
-      );
-    }
-  );
-}
-
-function resetChat() {
-  if (!chatWindow || !chatInput) return;
-  chatHistory = [];
-  chatWindow.innerHTML = `<div class="chat-message chat-ai">${t("chatWelcome")}</div>`;
-  chatInput.value = "";
-  speechBaseValue = "";
-}
-
-function appendMessage(role, text) {
-  if (!chatWindow) return;
-  const msgDiv = document.createElement("div");
-  msgDiv.className = `chat-message ${role === "user" ? "chat-user" : "chat-ai"}`;
-  msgDiv.textContent = text;
-  chatWindow.appendChild(msgDiv);
-  chatWindow.scrollTop = chatWindow.scrollHeight;
-}
-
-function setMicState(state) {
-  // state: false | true | "recording"
-  isListening = !!state;
-
-  if (!chatMicBtn) return;
-
-  chatMicBtn.classList.toggle("listening", !!state);
-  chatMicBtn.classList.toggle("recording", state === "recording");
-  chatMicBtn.disabled = false;
-
-  if (state === "recording") {
-    chatMicBtn.title = "Recording… click to stop";
-    chatMicBtn.setAttribute("aria-label", "Recording — click to stop");
-  } else if (state) {
-    chatMicBtn.title = "Stop listening";
-    chatMicBtn.setAttribute("aria-label", "Stop listening");
-  } else {
-    chatMicBtn.title = "Speak your question";
-    chatMicBtn.setAttribute("aria-label", "Speak your question");
-  }
-}
-
-function stopSpeechRecognition() {
-  if (isListening) {
-    chrome.runtime.sendMessage({ type: "stt-stop" }).catch(() => { });
-  }
-}
-
-function setupSpeechRecognition() {
-  if (!chatMicBtn) return;
-
-  // Listen for results relayed from the offscreen document via the background
-  chrome.runtime.onMessage.addListener((message) => {
-    if (message.target !== "popup") return;
-
-    if (message.type === "stt-started") {
-      speechBaseValue = chatInput.value.trim();
-      setMicState("recording");  // show pulsing red state while recording
-    }
-
-    if (message.type === "stt-result") {
-      const spokenText = message.transcript;
-      if (spokenText) {
-        chatInput.value = [speechBaseValue, spokenText]
-          .filter(Boolean)
-          .join(speechBaseValue && spokenText ? " " : "");
-      }
-    }
-
-    if (message.type === "stt-error") {
-      setMicState(false);
-      if (message.error === "not-allowed") {
-        appendMessage(
-          "model",
-          "🎤 Microphone access was denied. Please go to chrome://extensions, find ConsentWise AI, click \"Details\", then allow the Microphone permission. Reload the extension after."
-        );
-      } else if (message.error === "not-supported") {
-        if (chatMicBtn) {
-          chatMicBtn.disabled = true;
-          chatMicBtn.title = "Speech input is not supported in this browser";
-        }
-      } else if (message.error === "network") {
-        appendMessage("model", "⚠️ Could not reach the transcription server. Make sure the backend is running and try again.");
-      } else if (message.error !== "no-speech" && message.error !== "aborted") {
-        appendMessage("model", "Speech input encountered an error. Please try again.");
-      }
-    }
-
-    if (message.type === "stt-ended") {
-      setMicState(false);
-      speechBaseValue = chatInput.value.trim();
-    }
-  });
-
-  chatMicBtn.addEventListener("click", () => {
-    if (isListening) {
-      stopSpeechRecognition();
-      return;
-    }
-
-    // Optimistic UI — offscreen confirms via stt-started
-    chatMicBtn.disabled = true;
-    chatMicBtn.title = "Starting…";
-
-    chrome.runtime.sendMessage({
-      type: "stt-start",
-      lang: chatLang?.value || "en-IN",
-    }).then(() => {
-      chatMicBtn.disabled = false;
-      chatInput.focus();
-    }).catch(() => {
-      setMicState(false);
-      appendMessage("model", "Couldn't start audio capture. Make sure the backend is running.");
-    });
-  });
-}
-
-if (chatSendBtn && chatInput && chatWindow) {
-  chatSendBtn.addEventListener("click", async () => {
-    const text = chatInput.value.trim();
-    if (!text) return;
-
-    stopSpeechRecognition();
-
-    appendMessage("user", text);
-    chatInput.value = "";
-    speechBaseValue = "";
-    chatSendBtn.disabled = true;
-
-    const thinkingDiv = document.createElement("div");
-    thinkingDiv.className = "chat-message chat-ai";
-    thinkingDiv.textContent = t("thinkingMsg");
-    chatWindow.appendChild(thinkingDiv);
-    chatWindow.scrollTop = chatWindow.scrollHeight;
-
-    let currentLang = "Indian English";
-    if (chatLang && chatLang.options) {
-      currentLang = chatLang.options[chatLang.selectedIndex].text;
-    }
-    const questionWithLang = `[Please answer in ${currentLang}] ${text}`;
-
+    await new Promise((r) => setTimeout(r, 250));
     try {
-      const res = await fetch(API.chat, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          document_context: latestOriginalText || analysisSummary.textContent,
-          question: questionWithLang,
-          history: chatHistory
-        })
-      });
-
-      if (!res.ok) throw new Error("Chat failed.");
-      const data = await res.json();
-      chatHistory.push({ role: "user", text: questionWithLang });
-      chatHistory.push({ role: "model", text: data.answer });
-
-      chatWindow.removeChild(thinkingDiv);
-      appendMessage("model", data.answer);
-    } catch (err) {
-      chatWindow.removeChild(thinkingDiv);
-      appendMessage("model", t("chatErrorMsg"));
-    } finally {
-      chatSendBtn.disabled = false;
-    }
-  });
-
-  chatInput.addEventListener("keypress", (e) => {
-    if (e.key === "Enter") chatSendBtn.click();
-  });
-}
-
-/* ── i18n helpers (dictionaries + DOM engine live in i18n.js) ──────────── */
-
-/** Translate a key using the popup's currently selected language. */
-function t(key) {
-  const lang = globalLang ? globalLang.value : ConsentWiseI18n.FALLBACK_LANG;
-  return ConsentWiseI18n.translate(lang, key);
-}
-
-/** Swap every translatable DOM node, then re-sync the protection label. */
-function applyI18n() {
-  const lang = globalLang ? globalLang.value : ConsentWiseI18n.FALLBACK_LANG;
-  ConsentWiseI18n.apply(lang);
-  if (protectionLabel) {
-    const isOn = protectionToggle && protectionToggle.classList.contains("is-on");
-    protectionLabel.textContent = isOn ? t("protectionOn") : t("protectionOff");
-  }
-}
-
-/* ── Global Language Selector ──────────────────────────────────────────── */
-
-/**
- * Apply a language value: sync service selects, fonts, i18n, and persist.
- */
-function applyGlobalLang(langValue) {
-  // Sync all hidden service selects
-  [ttsLang, chatLang, quizLang].forEach((sel) => {
-    if (sel) sel.value = langValue;
-  });
-
-  // Font adjustment for scripts using Devanagari or other Indian scripts
-  const devanagariLangs = ["hi-IN", "mr-IN"];
-  if (devanagariLangs.includes(langValue)) {
-    document.body.style.fontFamily = "'Noto Sans Devanagari', 'Space Grotesk', sans-serif";
-    document.body.style.fontWeight = "500";
-  } else {
-    document.body.style.fontFamily = "'Space Grotesk', sans-serif";
-    document.body.style.fontWeight = "400";
-  }
-
-  // Apply full UI translation
-  applyI18n();
-
-  // Persist to storage
-  chrome.storage.local.set({ globalLangCode: langValue });
-}
-
-function setupGlobalLang() {
-  if (!globalLang) return;
-
-  // Restore saved language preference
-  chrome.storage.local.get(["globalLangCode"], (data) => {
-    if (data.globalLangCode) {
-      globalLang.value = data.globalLangCode;
-      applyGlobalLang(data.globalLangCode);
-    }
-  });
-
-  globalLang.addEventListener("change", () => {
-    if (isListening) stopSpeechRecognition();
-    applyGlobalLang(globalLang.value);
-    // Language is durable user data — mirror it to the backend profile.
-    if (typeof ConsentWiseIdentity !== "undefined") {
-      ConsentWiseIdentity.saveProfile({ language: globalLang.value }).catch(() => {});
-      chrome.storage.local.get(["userProfile"], (data) => {
-        chrome.storage.local.set({
-          userProfile: { ...(data.userProfile || {}), language: globalLang.value },
-        });
-      });
-    }
-  });
-}
-
-
-let isPlaying = false;
-if (ttsPlayBtn) {
-  ttsPlayBtn.addEventListener("click", async () => {
-  if (isPlaying) {
-    ttsAudio.pause();
-    isPlaying = false;
-    ttsPlayBtn.textContent = t("listenBtn");
-    return;
-  }
-
-  const textToSay = analysisSummary.textContent;
-  // Guard: don't TTS the placeholder text (check all language variants)
-  const isPlaceholder = !textToSay || Object.values(I18N).some((d) => d["analyzePlaceholder"] === textToSay);
-  if (isPlaceholder) return;
-
-  ttsPlayBtn.disabled = true;
-  ttsPlayBtn.textContent = t("loadingBtn");
-
-  try {
-    const res = await fetch(API.tts, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        text: textToSay,
-        language_code: ttsLang.value,
-        voice_name: "Kore"
-      })
+      const r = await sendToTab(tab.id, { action: "getPolicyText" });
+      if (r && typeof r.text === "string") return r;
+    } catch { /* fall through */ }
+    const [res] = await chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      func: () => ({ text: (document.body ? document.body.innerText : "").slice(0, 5000).trim(), title: document.title || "", url: location.href }),
     });
-
-    if (!res.ok) throw new Error("TTS failed");
-    const data = await res.json();
-    ttsAudio.src = `data:${data.mime_type};base64,${data.audio_base64}`;
-    await ttsAudio.play();
-    isPlaying = true;
-    ttsPlayBtn.textContent = t("stopBtn");
-
-    ttsAudio.onended = () => {
-      isPlaying = false;
-      ttsPlayBtn.textContent = t("listenBtn");
-    };
-  } catch (err) {
-    console.error(err);
-    alert("Could not load audio. Try again.");
-  } finally {
-    ttsPlayBtn.disabled = false;
-    if (!isPlaying) ttsPlayBtn.textContent = t("listenBtn");
+    if (!res || !res.result) throw new Error(t("cannotRead"));
+    return res.result;
   }
-  });
-}
-
-if (protectionToggle) protectionToggle.addEventListener("click", toggleProtection);
-if (openLatestBtn) openLatestBtn.addEventListener("click", openLatestReport);
-if (analyzeCurrentBtn) analyzeCurrentBtn.addEventListener("click", analyzeCurrentTab);
-
-/* ── Interactive Quiz Logic ────────────────────────────────────────── */
-function renderQuizQuestion(index) {
-  if (!currentQuizData || currentQuizData.length === 0) return;
-  if (index >= currentQuizData.length) {
-    quizQuestionText.textContent = t("quizCompleteMsg");
-    quizOptA.style.display = "none";
-    quizOptB.style.display = "none";
-    quizExplanationBox.style.display = "none";
-    quizNextBtn.style.display = "none";
-    return;
-  }
-
-  const q = currentQuizData[index];
-  quizQuestionText.textContent = `Q${index + 1}: ${q.question}`;
-  quizOptA.textContent = `A) ${q.option_a}`;
-  quizOptB.textContent = `B) ${q.option_b}`;
-
-  // Reset states
-  quizOptA.style.display = "block";
-  quizOptB.style.display = "block";
-  quizOptA.style.borderColor = "#e2e8f0";
-  quizOptA.style.background = "#fff";
-  quizOptA.style.color = "#334155";
-  quizOptA.disabled = false;
-
-  quizOptB.style.borderColor = "#e2e8f0";
-  quizOptB.style.background = "#fff";
-  quizOptB.style.color = "#334155";
-  quizOptB.disabled = false;
-
-  quizExplanationBox.style.display = "none";
-  quizNextBtn.style.display = "none";
-}
-
-function handleQuizAnswer(selectedOpt, btnEl) {
-  const q = currentQuizData[currentQuizIndex];
-  const isCorrect = (selectedOpt === q.correct_option);
-
-  quizOptA.disabled = true;
-  quizOptB.disabled = true;
-
-  if (isCorrect) {
-    btnEl.style.borderColor = "#16a34a";
-    btnEl.style.background = "#dcfce7";
-    btnEl.style.color = "#166534";
-  } else {
-    btnEl.style.borderColor = "#dc2626";
-    btnEl.style.background = "#fee2e2";
-    btnEl.style.color = "#991b1b";
-
-    const correctBtn = (q.correct_option === "A") ? quizOptA : quizOptB;
-    correctBtn.style.borderColor = "#16a34a";
-  }
-
-  quizExplanationBox.textContent = q.explanation;
-  quizExplanationBox.style.display = "block";
-
-  if (currentQuizIndex < currentQuizData.length - 1) {
-    quizNextBtn.style.display = "block";
-  } else {
-    quizNextBtn.textContent = t("finishQuiz");
-    quizNextBtn.style.display = "block";
-    quizNextBtn.onclick = () => { renderQuizQuestion(999); };
-  }
-}
-
-if (quizGenerateBtn) {
-  quizGenerateBtn.addEventListener("click", async () => {
-    if (!latestOriginalText) {
-      alert(t("analyzeFirstMsg"));
-      return;
-    }
-
-    quizContainer.style.display = "flex";
-    quizQuestionText.textContent = t("quizLoadingMsg");
-    quizOptA.style.display = "none";
-    quizOptB.style.display = "none";
-    quizExplanationBox.style.display = "none";
-    quizNextBtn.style.display = "none";
-    quizGenerateBtn.disabled = true;
-    quizGenerateBtn.textContent = t("generatingQuiz");
-
-    try {
-      const res = await fetch(API.quiz, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          document_context: latestOriginalText,
-          language_code: quizLang.value
-        })
+  function sendToTab(tabId, message) {
+    return new Promise((resolve, reject) => {
+      chrome.tabs.sendMessage(tabId, message, (r) => {
+        if (chrome.runtime.lastError) reject(new Error(chrome.runtime.lastError.message));
+        else resolve(r);
       });
-      if (!res.ok) throw new Error("Quiz generation failed.");
-
-      const data = await res.json();
-      if (data && data.questions && data.questions.length > 0) {
-        currentQuizData = data.questions;
-        currentQuizIndex = 0;
-        renderQuizQuestion(0);
-      } else {
-        throw new Error("No questions retrieved.");
-      }
-    } catch (err) {
-      console.error(err);
-      quizQuestionText.textContent = t("quizFailedMsg");
-    } finally {
-      quizGenerateBtn.disabled = false;
-      quizGenerateBtn.textContent = t("generateQuiz");
-    }
-  });
-}
-
-if (quizOptA) quizOptA.addEventListener("click", () => handleQuizAnswer("A", quizOptA));
-if (quizOptB) quizOptB.addEventListener("click", () => handleQuizAnswer("B", quizOptB));
-
-if (quizNextBtn) {
-  quizNextBtn.addEventListener("click", () => {
-    if (quizNextBtn.textContent === "Finish") return;
-    currentQuizIndex++;
-    renderQuizQuestion(currentQuizIndex);
-  });
-}
-
-if (openDashboardBtn) openDashboardBtn.addEventListener("click", openDashboard);
-if (openLatestBtn) openLatestBtn.addEventListener("click", openLatestReport);
-if (analyzeCurrentBtn) analyzeCurrentBtn.addEventListener("click", analyzeCurrentTab);
-if (footerLink) {
-  footerLink.addEventListener("click", (event) => {
-    event.preventDefault();
-    openDashboard();
-  });
-}
-
-loadProtectionState();
-loadStats();
-setAnalysisState({});
-restoreLatestAnalysis();
-setupSpeechRecognition();
-setupGlobalLang();
-
-// ── Document / Image Upload Feature ───────────────────────────────────────────
-
-(function initDocUpload() {
-  const VISION_API_URL = API.analyzeDocument;
-
-  const dropZone = document.getElementById("drop-zone");
-  const fileInput = document.getElementById("doc-file-input");
-  const filePreview = document.getElementById("doc-file-preview");
-  const previewImg = document.getElementById("doc-preview-img");
-  const fileNameEl = document.getElementById("doc-file-name");
-  const docStatus = document.getElementById("doc-status");
-  const analyzeBtn = document.getElementById("doc-analyze-btn");
-  const docResults = document.getElementById("doc-results");
-  const docSummary = document.getElementById("doc-summary");
-  const docKeyPoints = document.getElementById("doc-key-points");
-  const docRisks = document.getElementById("doc-risks");
-  const docHint = document.getElementById("doc-hint");
-  const docIntent = document.getElementById("doc-intent");
-  const extractedText = document.getElementById("doc-extracted-text");
-  const extractedToggle = document.getElementById("doc-extracted-toggle");
-
-  if (!dropZone || !fileInput || !filePreview || !previewImg || !fileNameEl || !docStatus || !analyzeBtn || !docResults || !docSummary || !docKeyPoints || !docRisks || !docHint || !docIntent || !extractedText || !extractedToggle) {
-    return;
+    });
   }
 
-  let selectedFile = null;
-
-  // ── Drag-and-drop visual feedback ──────────────────────────────────
-  dropZone.addEventListener("dragover", (e) => {
-    e.preventDefault();
-    dropZone.classList.add("drag-over");
-  });
-
-  dropZone.addEventListener("dragleave", () => {
-    dropZone.classList.remove("drag-over");
-  });
-
-  dropZone.addEventListener("drop", (e) => {
-    e.preventDefault();
-    dropZone.classList.remove("drag-over");
-    const file = e.dataTransfer.files[0];
-    if (file) handleFileSelected(file);
-  });
-
-  // ── File input change ───────────────────────────────────────────────
-  fileInput.addEventListener("change", () => {
-    const file = fileInput.files[0];
-    if (file) handleFileSelected(file);
-  });
-
-  // ── Handle a selected file ──────────────────────────────────────────
-  function handleFileSelected(file) {
-    const ALLOWED = ["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif", "application/pdf"];
-    if (!ALLOWED.includes(file.type)) {
-      setStatus("Unsupported file type. Use JPG, PNG, WEBP, HEIC, or PDF.", "error");
-      return;
-    }
-    if (file.size > 20 * 1024 * 1024) {
-      setStatus("File too large (max 20 MB).", "error");
-      return;
-    }
-
-    selectedFile = file;
-    setStatus("");
-
-    // Reset previous results
-    docResults.classList.remove("visible");
-
-    // Show file name
-    fileNameEl.textContent = file.name;
-    filePreview.style.display = "block";
-
-    // Show image preview or PDF icon
-    if (file.type.startsWith("image/")) {
-      const reader = new FileReader();
-      reader.onload = (e) => { previewImg.src = e.target.result; previewImg.style.display = "block"; };
-      reader.readAsDataURL(file);
+  function setAnalyzeMode(loading) {
+    if (loading) {
+      analyzeBtn.textContent = t("cancel");
+      analyzeBtn.classList.add("btn--secondary");
     } else {
-      previewImg.style.display = "none";
+      analyzeBtn.textContent = t("analyzeBtn");
+      analyzeBtn.classList.remove("btn--secondary");
     }
-
-    analyzeBtn.disabled = false;
   }
 
-  // ── Analyze button click ────────────────────────────────────────────
-  analyzeBtn.addEventListener("click", async () => {
-    if (!selectedFile) return;
-
-    analyzeBtn.disabled = true;
-    analyzeBtn.textContent = t("analyzingBtn");
-    setStatus("Sending to Vision AI — this may take a few seconds…", "loading");
-    docResults.classList.remove("visible");
+  async function analyzeCurrentTab() {
+    if (analyzeCtrl) { analyzeCtrl.abort(); return; }
+    analyzeCtrl = new AbortController();
+    setAnalyzeMode(true);
+    renderSkeleton();
+    hideBanner();
 
     try {
-      const formData = new FormData();
-      formData.append("file", selectedFile);
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      if (!tab || !tab.id) throw new Error(t("noTab"));
+      if (isRestricted(tab.url || "")) throw new Error(t("restrictedPage"));
+      if (isOwnApp(tab.url || "")) throw new Error(t("ownAppPage"));
+
+      const payload = await getTabText(tab);
+      const text = (payload.text || "").trim();
+      if (!text) throw new Error(t("noText"));
+
       const clientId = await ConsentWiseIdentity.getClientId().catch(() => null);
-      if (clientId) formData.append("client_id", clientId);
+      const data = await CWApi.analyzePage(
+        { text, title: payload.title || tab.title || "", url: payload.url || tab.url || "", source: "extension-popup", client_id: clientId },
+        { signal: analyzeCtrl.signal }
+      );
 
-      const response = await fetch(VISION_API_URL, {
-        method: "POST",
-        body: formData,
-      });
-
-      if (!response.ok) {
-        let detail = `Error ${response.status}`;
-        try { const j = await response.json(); detail = j.detail || detail; } catch (_) { }
-        throw new Error(detail);
-      }
-
-      const data = await response.json();
-      renderResults(data);
-      setStatus("");
+      const meta = { url: payload.url || tab.url || "", at: Date.now() };
+      lastRecordAt = meta.at;
+      renderAnalysis(data, meta);
+      resetChat();
+      await CWState.saveLastAnalysis(data, meta);
+      CWState.bumpCounter(KEYS.tabsOpened).then(refreshStats);
     } catch (err) {
-      setStatus(`Analysis failed: ${err.message}`, "error");
+      if (CWApi.isAbort(err)) {
+        if (lastRecord) renderAnalysis(lastRecord.data, lastRecord.meta);
+        else renderNotScanned();
+      } else {
+        renderNotScanned();
+        showBanner(friendlyError(err), "error");
+      }
     } finally {
-      analyzeBtn.disabled = false;
-      analyzeBtn.textContent = t("analyzeDocBtn");
+      analyzeCtrl = null;
+      setAnalyzeMode(false);
     }
-  });
-
-  // ── Render analysis results ─────────────────────────────────────────
-  function renderResults(data) {
-    docSummary.textContent = data.summary || "—";
-
-    renderList(docKeyPoints, data.key_points || [], false);
-    renderList(docRisks, data.risks || [], true);
-
-    docHint.textContent = data.accessibility_hint || "—";
-    docIntent.textContent = data.intent || "—";
-
-    extractedText.textContent = data.extracted_text || "—";
-    extractedText.classList.remove("open");
-    extractedToggle.textContent = "Show raw text ▾";
-
-    docResults.classList.add("visible");
-
-    // Scroll section into view
-    docResults.scrollIntoView({ behavior: "smooth", block: "nearest" });
   }
+  function friendlyError(err) {
+    const m = (err && err.message) || "";
+    if (/Failed to fetch|NetworkError|Timed out/i.test(m)) return t("backendUnreachable");
+    if (/Cannot access|Missing host permission/i.test(m)) return t("restrictedPage");
+    return m || t("analysisFailed");
+  }
+  on(analyzeBtn, "click", analyzeCurrentTab);
 
-  function renderList(ulEl, items, isRisk) {
-    ulEl.innerHTML = "";
-    if (!items.length) {
-      const li = document.createElement("li");
-      li.textContent = isRisk ? t("noBadHistory") : t("noKeyPoints");
-      ulEl.appendChild(li);
+  // ── TTS ───────────────────────────────────────────────────────────────
+  const ttsBtn = $("tts-btn");
+  const ttsLabel = $("tts-label");
+  const ttsAudio = $("tts-audio");
+  let ttsPlaying = false;
+  on(ttsBtn, "click", async () => {
+    if (ttsPlaying) {
+      ttsAudio.pause();
+      ttsPlaying = false;
+      ttsLabel.textContent = t("listenBtn");
       return;
     }
-    items.forEach((text) => {
-      const li = document.createElement("li");
-      li.textContent = text;
-      ulEl.appendChild(li);
-    });
-  }
-
-  // ── Extracted text toggle ───────────────────────────────────────────
-  extractedToggle.addEventListener("click", () => {
-    const open = extractedText.classList.toggle("open");
-    extractedToggle.textContent = open ? t("hideRaw") : t("showRaw");
-  });
-
-  // ── Status helper ───────────────────────────────────────────────────
-  function setStatus(msg, type = "") {
-    docStatus.textContent = msg;
-    docStatus.className = "doc-status" + (type ? ` ${type}` : "");
-  }
-})();
-
-// ── Welcome & Onboarding Logic ─────────────────────────────────────────
-(function initWelcome() {
-  const welcomeScreen = document.getElementById("welcome-screen");
-  const onboardScreen = document.getElementById("onboarding-screen");
-  const mainApp = document.getElementById("main-app");
-  const getStartedBtn = document.getElementById("get-started-btn");
-  const finishSetupBtn = document.getElementById("finish-setup-btn");
-  const nameInput = document.getElementById("onboard-name");
-  const emailInput = document.getElementById("onboard-email");
-  const chips = document.querySelectorAll(".onboard-chip");
-
-  /** Selected interest chips as plain strings. */
-  function selectedInterests() {
-    return Array.from(chips)
-      .filter((chip) => chip.classList.contains("selected"))
-      .map((chip) => chip.textContent.trim());
-  }
-
-  // Pre-fill the form from the local convenience copy of the profile.
-  chrome.storage.local.get(["userProfile"], (data) => {
-    const profile = data.userProfile || {};
-    if (nameInput && profile.name) nameInput.value = profile.name;
-    if (emailInput && profile.email) emailInput.value = profile.email;
-    if (Array.isArray(profile.interests) && profile.interests.length) {
-      chips.forEach((chip) => {
-        chip.classList.toggle("selected", profile.interests.includes(chip.textContent.trim()));
-      });
+    const text = summaryBody.textContent.trim();
+    if (!text) return;
+    ttsBtn.disabled = true;
+    ttsLabel.textContent = t("loadingBtn");
+    try {
+      const data = await CWApi.tts({ text, language_code: currentLang(), voice_name: "alloy" });
+      ttsAudio.src = `data:${data.mime_type};base64,${data.audio_base64}`;
+      await ttsAudio.play();
+      ttsPlaying = true;
+      ttsLabel.textContent = t("stopBtn");
+      ttsAudio.onended = () => { ttsPlaying = false; ttsLabel.textContent = t("listenBtn"); };
+    } catch {
+      showBanner(t("ttsFailed"), "error");
+      ttsLabel.textContent = t("listenBtn");
+    } finally {
+      ttsBtn.disabled = false;
     }
   });
 
-  if (welcomeScreen && onboardScreen && mainApp && getStartedBtn && finishSetupBtn) {
-    chrome.storage.local.get(["hasSeenWelcome"], (data) => {
-      if (data.hasSeenWelcome) {
-        welcomeScreen.style.display = "none";
-        onboardScreen.style.display = "none";
-        mainApp.style.display = "block";
-      } else {
-        welcomeScreen.style.display = "flex";
-        onboardScreen.style.display = "none";
-        mainApp.style.display = "none";
-      }
-    });
+  // ── Chat (C2, UX-10) ─────────────────────────────────────────────────
+  const chatWindow = $("chat-window");
+  const chatInput = $("chat-input");
+  const chatSend = $("chat-send");
+  const chatMic = $("chat-mic");
+  const MAX_HISTORY_TURNS = 8;
+  let chatHistory = [];
+  let micListening = false;
+  let micBase = "";
 
-    getStartedBtn.addEventListener("click", () => {
-      welcomeScreen.style.display = "none";
-      onboardScreen.style.display = "flex";
-    });
+  function resetChat() {
+    chatHistory = [];
+    chatWindow.textContent = "";
+    const welcome = document.createElement("div");
+    welcome.className = "chat-msg ai";
+    welcome.textContent = t("chatWelcome");
+    chatWindow.appendChild(welcome);
+    chatInput.value = "";
+    autoGrow();
+  }
+  function addMsg(role, text) {
+    const div = document.createElement("div");
+    div.className = `chat-msg ${role}`;
+    div.textContent = text;
+    chatWindow.appendChild(div);
+    chatWindow.scrollTop = chatWindow.scrollHeight;
+    return div;
+  }
+  function autoGrow() {
+    chatInput.style.height = "auto";
+    chatInput.style.height = Math.min(chatInput.scrollHeight, 96) + "px";
+  }
+  on(chatInput, "input", autoGrow);
+  on(chatInput, "keydown", (e) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      sendChat();
+    }
+  });
 
-    finishSetupBtn.addEventListener("click", async () => {
-      const profile = {
-        name: nameInput ? nameInput.value.trim() : "",
-        email: emailInput ? emailInput.value.trim() : "",
-        interests: selectedInterests(),
-        language: globalLang ? globalLang.value : ConsentWiseI18n.FALLBACK_LANG,
-      };
+  async function sendChat(retryText) {
+    const text = (retryText || chatInput.value).trim();
+    if (!text) return;
+    stopMic();
+    if (!retryText) {
+      addMsg("user", text);
+      chatInput.value = "";
+      autoGrow();
+    }
+    chatSend.disabled = true;
+    const thinking = addMsg("ai", t("thinkingMsg"));
 
-      // Local copy for instant re-render; Postgres is the source of truth.
-      chrome.storage.local.set({ hasSeenWelcome: true, userProfile: profile });
-
-      // Best-effort backend sync — never block the UI on it.
-      ConsentWiseIdentity.saveProfile(profile).catch(() => {});
-
-      onboardScreen.style.display = "none";
-      mainApp.style.display = "block";
-    });
-
-    // Chip toggling
-    chips.forEach(chip => {
-      chip.addEventListener("click", () => {
-        // Toggle this chip
-        chip.classList.toggle("selected");
-
-        // If they select "Equal Importance", maybe deselect others, but for a dummy form it's fine just to toggle.
-        if (chip.textContent === "Equal Importance" && chip.classList.contains("selected")) {
-          chips.forEach(c => { if (c !== chip) c.classList.remove("selected"); });
-        } else if (chip.classList.contains("selected")) {
-          // If they select anything else, remove Equal Importance
-          const equalChip = Array.from(chips).find(c => c.textContent === "Equal Importance");
-          if (equalChip) equalChip.classList.remove("selected");
-        }
+    const langName = (langSelect.selectedOptions[0] || {}).text || "English";
+    try {
+      const data = await CWApi.chat({
+        document_context: documentContext,
+        question: `[Answer in ${langName}] ${text}`,
+        history: chatHistory,
       });
+      thinking.remove();
+      addMsg("ai", data.answer);
+      chatHistory.push({ role: "user", text }, { role: "model", text: data.answer });
+      if (chatHistory.length > MAX_HISTORY_TURNS * 2) chatHistory = chatHistory.slice(-MAX_HISTORY_TURNS * 2);
+    } catch {
+      thinking.remove();
+      const errBubble = addMsg("ai", t("chatErrorMsg"));
+      const retry = document.createElement("button");
+      retry.className = "btn--quiet";
+      retry.textContent = t("retry");
+      retry.style.marginTop = "4px";
+      on(retry, "click", () => { errBubble.remove(); retry.remove(); sendChat(text); });
+      errBubble.appendChild(document.createElement("br"));
+      errBubble.appendChild(retry);
+    } finally {
+      chatSend.disabled = false;
+    }
+  }
+  on(chatSend, "click", () => sendChat());
+
+  // ── Speech-to-text ────────────────────────────────────────────────────
+  function setMicUI(state) {
+    micListening = Boolean(state);
+    chatMic.classList.toggle("rec", state === "recording");
+    chatMic.disabled = false;
+  }
+  function stopMic() {
+    if (micListening) chrome.runtime.sendMessage({ type: "stt-stop" }).catch(() => {});
+  }
+  chrome.runtime.onMessage.addListener((message, sender) => {
+    if (!sender || sender.id !== chrome.runtime.id || message.target !== "popup") return;
+    if (message.type === "stt-started") { micBase = chatInput.value.trim(); setMicUI("recording"); }
+    else if (message.type === "stt-result" && message.transcript) {
+      chatInput.value = [micBase, message.transcript].filter(Boolean).join(" ");
+      autoGrow();
+    } else if (message.type === "stt-error") {
+      setMicUI(false);
+      if (message.error === "not-allowed") showBanner(t("micDenied"), "error");
+      else if (message.error === "network") showBanner(t("micNetwork"), "error");
+    } else if (message.type === "stt-ended") {
+      setMicUI(false);
+      micBase = chatInput.value.trim();
+    }
+  });
+  on(chatMic, "click", () => {
+    if (micListening) return stopMic();
+    chatMic.disabled = true;
+    chrome.runtime.sendMessage({ type: "stt-start", lang: currentLang() })
+      .then(() => { chatMic.disabled = false; chatInput.focus(); })
+      .catch(() => { setMicUI(false); showBanner(t("micNetwork"), "error"); });
+  });
+
+  // ── Quiz (BUG-3: index-based) ─────────────────────────────────────────
+  const quizGenerate = $("quiz-generate");
+  const quizRun = $("quiz-run");
+  const quizCount = $("quiz-count");
+  const quizBar = $("quiz-bar");
+  const quizQ = $("quiz-q");
+  const quizA = $("quiz-a");
+  const quizB = $("quiz-b");
+  const quizExplain = $("quiz-explain");
+  const quizNext = $("quiz-next");
+  let quizData = [];
+  let quizIndex = 0;
+
+  function renderQuizQuestion() {
+    if (quizIndex >= quizData.length) {
+      quizQ.textContent = t("quizCompleteMsg");
+      [quizA, quizB, quizExplain, quizNext].forEach((el) => (el.hidden = true));
+      quizBar.style.width = "100%";
+      quizCount.textContent = `${quizData.length} / ${quizData.length}`;
+      return;
+    }
+    const q = quizData[quizIndex];
+    quizCount.textContent = `${quizIndex + 1} / ${quizData.length}`;
+    quizBar.style.width = `${(quizIndex / quizData.length) * 100}%`;
+    quizQ.textContent = q.question;
+    [
+      [quizA, `A · ${q.option_a}`],
+      [quizB, `B · ${q.option_b}`],
+    ].forEach(([el, label]) => {
+      el.hidden = false;
+      el.textContent = label;
+      el.disabled = false;
+      el.className = "quiz-opt";
+    });
+    quizExplain.hidden = true;
+    quizNext.hidden = true;
+  }
+  function answerQuiz(choice, el) {
+    const q = quizData[quizIndex];
+    quizA.disabled = true;
+    quizB.disabled = true;
+    const correctEl = q.correct_option === "A" ? quizA : quizB;
+    correctEl.classList.add("correct");
+    if (el !== correctEl) el.classList.add("wrong");
+    quizExplain.textContent = q.explanation;
+    quizExplain.hidden = false;
+    quizNext.hidden = false;
+    quizNext.textContent = quizIndex < quizData.length - 1 ? t("nextQuestion") : t("finishQuiz");
+  }
+  on(quizA, "click", () => answerQuiz("A", quizA));
+  on(quizB, "click", () => answerQuiz("B", quizB));
+  on(quizNext, "click", () => { quizIndex += 1; renderQuizQuestion(); });
+
+  on(quizGenerate, "click", async () => {
+    if (!documentContext) { showBanner(t("analyzeFirstMsg"), "error"); return; }
+    quizGenerate.disabled = true;
+    quizGenerate.textContent = t("generatingQuiz");
+    try {
+      const data = await CWApi.quiz({ document_context: documentContext, language_code: currentLang() });
+      if (!data.questions || !data.questions.length) throw new Error("empty");
+      quizData = data.questions;
+      quizIndex = 0;
+      quizRun.hidden = false;
+      renderQuizQuestion();
+    } catch {
+      showBanner(t("quizFailedMsg"), "error");
+    } finally {
+      quizGenerate.disabled = false;
+      quizGenerate.textContent = t("generateQuiz");
+    }
+  });
+
+  // ── Document upload ───────────────────────────────────────────────────
+  const dropZone = $("drop-zone");
+  const docFile = $("doc-file");
+  const docStatus = $("doc-status");
+  const docAnalyze = $("doc-analyze");
+  const docResults = $("doc-results");
+  const docLabel = $("doc-label");
+  const docRawToggle = $("doc-raw-toggle");
+  const docRaw = $("doc-raw");
+  let selectedFile = null;
+  const ALLOWED = ["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif", "application/pdf"];
+
+  function setDocStatus(msg, kind = "") {
+    docStatus.textContent = msg;
+    docStatus.className = "doc-status" + (kind ? ` ${kind}` : "");
+  }
+  function pickFile(file) {
+    if (!file) return;
+    if (!ALLOWED.includes(file.type)) return setDocStatus(t("docBadType"), "err");
+    if (file.size > 20 * 1024 * 1024) return setDocStatus(t("docTooBig"), "err");
+    selectedFile = file;
+    setDocStatus("");
+    docResults.classList.remove("show");
+    dropZone.classList.add("compact");
+    docLabel.textContent = file.name;
+    docAnalyze.disabled = false;
+  }
+  ["dragover", "dragenter"].forEach((ev) => on(dropZone, ev, (e) => { e.preventDefault(); dropZone.classList.add("drag"); }));
+  ["dragleave", "dragend"].forEach((ev) => on(dropZone, ev, () => dropZone.classList.remove("drag")));
+  on(dropZone, "drop", (e) => { e.preventDefault(); dropZone.classList.remove("drag"); pickFile(e.dataTransfer.files[0]); });
+  on(docFile, "change", () => pickFile(docFile.files[0]));
+
+  on(docAnalyze, "click", async () => {
+    if (!selectedFile) return;
+    docAnalyze.disabled = true;
+    docAnalyze.textContent = t("analyzingBtn");
+    setDocStatus(t("docSending"), "");
+    try {
+      const form = new FormData();
+      form.append("file", selectedFile);
+      const clientId = await ConsentWiseIdentity.getClientId().catch(() => null);
+      if (clientId) form.append("client_id", clientId);
+      const data = await CWApi.analyzeDocument(form);
+      renderDocResults(data);
+      setDocStatus("");
+    } catch (err) {
+      setDocStatus(`${t("analysisFailed")}: ${err.message}`, "err");
+    } finally {
+      docAnalyze.disabled = false;
+      docAnalyze.textContent = t("analyzeDocBtn");
+    }
+  });
+
+  function renderDocResults(data) {
+    $("doc-summary").textContent = data.summary || "—";
+    fillList($("doc-points"), data.key_points, "noKeyPoints");
+    fillList($("doc-risks"), data.risks, "noBadHistory");
+    $("doc-hint").textContent = data.accessibility_hint || "—";
+    docRaw.textContent = data.extracted_text || "—";
+    docRaw.classList.remove("open");
+    docRawToggle.textContent = t("showRaw");
+    docResults.classList.add("show");
+
+    const text = (data.extracted_text || data.summary || "").trim();
+    if (text) {
+      documentContext = text;
+      setFeatureAccess(true);
+      resetChat();
+      showBanner(t("docUnlocked"));
+    }
+  }
+  on(docRawToggle, "click", () => {
+    const open = docRaw.classList.toggle("open");
+    docRawToggle.textContent = open ? t("hideRaw") : t("showRaw");
+  });
+
+  // ── Protection toggle (SEC-3: now real) ───────────────────────────────
+  const protToggle = $("protection-toggle");
+  const protSub = $("protection-sub");
+  function syncProtectionLabel() {
+    if (!protToggle || !protSub) return;
+    const on_ = protToggle.getAttribute("aria-checked") === "true";
+    protSub.textContent = on_ ? t("protectionOn") : t("protectionOff");
+  }
+  CWState.get([KEYS.protectionEnabled]).then((d) => {
+    const enabled = d[KEYS.protectionEnabled] !== false;
+    protToggle.setAttribute("aria-checked", String(enabled));
+    protToggle.setAttribute("aria-pressed", String(enabled));
+    syncProtectionLabel();
+  });
+  on(protToggle, "click", () => {
+    const next = protToggle.getAttribute("aria-checked") !== "true";
+    protToggle.setAttribute("aria-checked", String(next));
+    protToggle.setAttribute("aria-pressed", String(next));
+    CWState.set({ [KEYS.protectionEnabled]: next });
+    syncProtectionLabel();
+  });
+
+  // ── Stats ─────────────────────────────────────────────────────────────
+  function animateTo(el, to) {
+    const from = Number(el.textContent) || 0;
+    const start = performance.now();
+    const step = (now) => {
+      const p = Math.min((now - start) / 400, 1);
+      el.textContent = String(Math.round(from + (to - from) * (1 - Math.pow(1 - p, 3))));
+      if (p < 1) requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+  }
+  function refreshStats() {
+    CWState.get([KEYS.interceptCount, KEYS.tabsOpened]).then((d) => {
+      animateTo($("stat-intercepts"), d[KEYS.interceptCount] || 0);
+      animateTo($("stat-analyses"), d[KEYS.tabsOpened] || 0);
     });
   }
+
+  // ── Profile & settings sheet ─────────────────────────────────────────
+  const sheet = $("sheet");
+  const backdrop = $("sheet-backdrop");
+  const chips = Array.from(document.querySelectorAll("#chips .chip"));
+  const pfName = $("pf-name");
+  const pfEmail = $("pf-email");
+  const sheetAvatar = $("sheet-avatar");
+  const avatarBtn = $("profile-btn");
+
+  const initials = (name) => {
+    const p = (name || "").trim().split(/\s+/).filter(Boolean);
+    return p.length ? (p[0][0] + (p[1] ? p[1][0] : "")).toUpperCase() : "CW";
+  };
+  function applyProfile(profile) {
+    pfName.value = profile.name || "";
+    pfEmail.value = profile.email || "";
+    const want = Array.isArray(profile.interests) ? profile.interests : [];
+    chips.forEach((c) => c.classList.toggle("on", want.includes(c.dataset.chip)));
+    const g = initials(profile.name);
+    avatarBtn.textContent = g;
+    sheetAvatar.textContent = g;
+  }
+  function openSheet() {
+    CWState.get([KEYS.userProfile]).then((d) => applyProfile(d[KEYS.userProfile] || {}));
+    refreshStats();
+    ConsentWiseIdentity.getClientId().then((id) => {
+      $("device-id").textContent = id ? id.slice(0, 8) + "…" : "—";
+    });
+    sheet.classList.add("open");
+    backdrop.classList.add("open");
+    sheet.setAttribute("aria-hidden", "false");
+  }
+  function closeSheet() {
+    sheet.classList.remove("open");
+    backdrop.classList.remove("open");
+    sheet.setAttribute("aria-hidden", "true");
+  }
+  on(avatarBtn, "click", openSheet);
+  on($("sheet-close"), "click", closeSheet);
+  on(backdrop, "click", closeSheet);
+  on(document, "keydown", (e) => { if (e.key === "Escape" && sheet.classList.contains("open")) closeSheet(); });
+  chips.forEach((c) => on(c, "click", () => c.classList.toggle("on")));
+
+  on($("save-btn"), "click", () => {
+    const profile = {
+      name: pfName.value.trim(),
+      email: pfEmail.value.trim(),
+      interests: chips.filter((c) => c.classList.contains("on")).map((c) => c.dataset.chip),
+      language: currentLang(),
+    };
+    CWState.set({ [KEYS.userProfile]: profile });
+    ConsentWiseIdentity.saveProfile(profile).catch(() => {});
+    applyProfile(profile);
+    closeSheet();
+  });
+
+  on($("device-copy"), "click", async () => {
+    const id = await ConsentWiseIdentity.getClientId();
+    navigator.clipboard.writeText(id).then(() => showBanner(t("copied")));
+  });
+  on($("device-reset"), "click", async () => {
+    if (!confirm(t("resetIdConfirm"))) return;
+    await CWState.remove(["clientId"]);
+    location.reload();
+  });
+  on($("data-download"), "click", async () => {
+    const id = await ConsentWiseIdentity.getClientId();
+    try {
+      const data = await CWApi.getUser(id);
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "consentwise-data.json";
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    } catch {
+      showBanner(t("noServerData"), "error");
+    }
+  });
+  on($("data-delete"), "click", async () => {
+    if (!confirm(t("deleteDataConfirm"))) return;
+    const id = await ConsentWiseIdentity.getClientId();
+    try { await CWApi.deleteUser(id); } catch { /* best effort */ }
+    await chrome.storage.local.clear();
+    location.reload();
+  });
+  on($("logout-btn"), "click", async () => {
+    if (!confirm(t("logoutConfirm"))) return;
+    await chrome.storage.local.clear();
+    location.reload();
+  });
+
+  // ── Language ─────────────────────────────────────────────────────────
+  on(langSelect, "change", () => {
+    stopMic();
+    applyLang(langSelect.value);
+    CWState.set({ [KEYS.globalLang]: langSelect.value });
+    ConsentWiseIdentity.saveProfile({ language: langSelect.value }).catch(() => {});
+    CWState.get([KEYS.userProfile]).then((d) => {
+      CWState.set({ [KEYS.userProfile]: { ...(d[KEYS.userProfile] || {}), language: langSelect.value } });
+    });
+  });
+
+  // ── Welcome ──────────────────────────────────────────────────────────
+  const welcome = $("welcome-screen");
+  const mainApp = $("main-app");
+  function showMain() {
+    welcome.hidden = true;
+    mainApp.hidden = false;
+  }
+  on($("get-started-btn"), "click", () => {
+    CWState.set({ [KEYS.hasSeenWelcome]: true });
+    showMain();
+  });
+
+  // ── Boot ─────────────────────────────────────────────────────────────
+  async function boot() {
+    const d = await CWState.get([KEYS.hasSeenWelcome, KEYS.globalLang]);
+    if (d[KEYS.globalLang]) langSelect.value = d[KEYS.globalLang];
+    applyLang(currentLang());
+
+    if (d[KEYS.hasSeenWelcome]) showMain();
+    else { welcome.hidden = false; mainApp.hidden = true; }
+
+    renderNotScanned();
+    refreshStats();
+
+    const rec = await CWState.loadLastAnalysis();
+    if (rec) {
+      lastRecordAt = rec.at || 0;
+      renderAnalysis(rec.data, rec.meta || {});
+      documentContext = rec.data.original_text_excerpt || rec.data.summary || "";
+      setFeatureAccess(Boolean(documentContext));
+      resetChat();
+    }
+  }
+  boot();
 })();

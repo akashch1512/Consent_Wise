@@ -5,1571 +5,271 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>ConsentWise AI</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link
-    href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap"
-    rel="stylesheet">
-  <style>
-    @property --ring-angle {
-      syntax: "<angle>";
-      inherits: false;
-      initial-value: 8deg;
-    }
-
-    @property --ring-color {
-      syntax: "<color>";
-      inherits: false;
-      initial-value: #6366f1;
-    }
-
-    :root {
-      --bg: #fdfbf5;
-      --surface: #ffffff;
-      --line: rgba(99, 102, 241, 0.12);
-      --text: #0f172a;
-      --muted: #64748b;
-      --good: #16a34a;
-      --warn: #d97706;
-      --bad: #dc2626;
-      --accent: #6366f1;
-      --accent2: #0ea5e9;
-    }
-
-    * {
-      box-sizing: border-box;
-    }
-
-    body {
-      margin: 0;
-      width: 390px;
-      min-height: 620px;
-      color: var(--text);
-      font-family: "Space Grotesk", sans-serif;
-      background: var(--bg);
-    }
-
-    .shell {
-      padding: 0;
-    }
-
-    /* ── Cards ────────────────────────────────────────────────────────── */
-    .hero,
-    .section,
-    .stat {
-      background: var(--surface);
-      border: none;
-      border-bottom: 1px solid var(--line);
-      box-shadow: none;
-    }
-
-    .hero {
-      border-radius: 0;
-      padding: 24px 20px;
-      position: relative;
-      overflow: hidden;
-    }
-
-    /* Subtle top accent bar */
-    .hero::before {
-      content: "";
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      height: 3px;
-      background: linear-gradient(90deg, var(--accent), var(--accent2));
-      border-radius: 0;
-    }
-
-    .hero::after {
-      content: "";
-      position: absolute;
-      right: -24px;
-      bottom: -36px;
-      width: 120px;
-      height: 120px;
-      border-radius: 50%;
-      background: radial-gradient(circle, rgba(99, 102, 241, 0.08), transparent 70%);
-      pointer-events: none;
-    }
-
-    /* ── Brand row ────────────────────────────────────────────────────── */
-    .brand-row,
-    .section-head,
-    .login-strip {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-    }
-
-    .brand {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      min-width: 0;
-    }
-
-    .shield {
-      width: 40px;
-      height: 40px;
-      border-radius: 12px;
-      display: grid;
-      place-items: center;
-      background: linear-gradient(135deg, #ede9fe, #dbeafe);
-      border: 1px solid rgba(99, 102, 241, 0.2);
-    }
-
-    .eyebrow {
-      font-size: 10px;
-      text-transform: uppercase;
-      letter-spacing: 0.14em;
-      color: var(--accent);
-      font-weight: 700;
-    }
-
-    .title {
-      margin-top: 2px;
-      font-size: 20px;
-      font-weight: 700;
-      color: var(--text);
-    }
-
-    .hero-tools {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      margin-left: auto;
-      flex-shrink: 0;
-    }
-
-    /* ── Pills / badges / chips ───────────────────────────────────────── */
-    .status-pill,
-    .badge,
-    .chip {
-      border-radius: 999px;
-      font-size: 10px;
-      font-weight: 700;
-      letter-spacing: 0.06em;
-      text-transform: uppercase;
-    }
-
-    .status-pill {
-      padding: 6px 11px;
-      color: #16a34a;
-      background: #dcfce7;
-      border: 1px solid #bbf7d0;
-    }
-
-    .status-pill.off {
-      color: #64748b;
-      background: #f1f5f9;
-      border-color: #dbe4ee;
-    }
-
-    .toggle-pill {
-      position: relative;
-      width: 52px;
-      height: 30px;
-      border-radius: 999px;
-      border: 1px solid #dbe4ee;
-      background: #e2e8f0;
-      cursor: pointer;
-      transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
-      box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.06);
-      flex-shrink: 0;
-    }
-
-    .toggle-pill::after {
-      content: "";
-      position: absolute;
-      top: 3px;
-      left: 3px;
-      width: 22px;
-      height: 22px;
-      border-radius: 50%;
-      background: #ffffff;
-      box-shadow: 0 4px 10px rgba(15, 23, 42, 0.16);
-      transition: transform 0.2s ease;
-    }
-
-    .toggle-pill.is-on {
-      background: linear-gradient(135deg, #6366f1 0%, #0ea5e9 100%);
-      border-color: rgba(99, 102, 241, 0.3);
-      box-shadow: 0 8px 20px rgba(99, 102, 241, 0.22);
-    }
-
-    .toggle-pill.is-on::after {
-      transform: translateX(22px);
-    }
-
-    .hero-copy {
-      margin: 10px 0 0;
-      color: var(--muted);
-      font-size: 12px;
-      line-height: 1.5;
-    }
-
-    .hero-actions {
-      display: grid;
-      grid-template-columns: 1.3fr 0.9fr;
-      gap: 10px;
-      margin-top: 16px;
-    }
-
-    /* ── Meter grid ───────────────────────────────────────────────────── */
-    .meter-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 10px;
-      margin-top: 14px;
-    }
-
-    .meter-card {
-      padding: 12px;
-      border-radius: 18px;
-      background: linear-gradient(180deg, #fbfdff 0%, #f8fafc 100%);
-      border: 1px solid rgba(99, 102, 241, 0.1);
-      text-align: center;
-    }
-
-    .meter-label {
-      color: var(--muted);
-      font-size: 10px;
-      text-transform: uppercase;
-      letter-spacing: 0.12em;
-      font-weight: 700;
-    }
-
-    .meter-ring {
-      position: relative;
-      width: 104px;
-      height: 104px;
-      margin: 8px auto 0;
-      border-radius: 50%;
-      display: grid;
-      place-items: center;
-      transition: --ring-angle 0.7s cubic-bezier(0.34, 1.56, 0.64, 1), --ring-color 0.5s ease;
-      background:
-        radial-gradient(circle at center, #ffffff 58%, transparent 59%),
-        conic-gradient(var(--ring-color) 0 var(--ring-angle), #e2e8f0 var(--ring-angle) 360deg);
-    }
-
-    .meter-ring::after {
-      content: "";
-      position: absolute;
-      inset: 14px;
-      border-radius: 50%;
-      background: #ffffff;
-      border: 1px solid rgba(99, 102, 241, 0.08);
-      box-shadow: inset 0 1px 4px rgba(0, 0, 0, 0.04);
-    }
-
-    .meter-value,
-    .meter-caption {
-      position: relative;
-      z-index: 1;
-    }
-
-    .meter-value {
-      font-size: 28px;
-      font-weight: 700;
-      line-height: 1;
-      color: var(--text);
-    }
-
-    .meter-caption {
-      margin-top: 3px;
-      color: var(--muted);
-      font-size: 9px;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-    }
-
-    .meter-title {
-      margin-top: 8px;
-      font-size: 13px;
-      font-weight: 700;
-      color: var(--text);
-    }
-
-    .meter-copy {
-      margin-top: 4px;
-      color: var(--muted);
-      font-size: 11px;
-      line-height: 1.5;
-      min-height: 32px;
-    }
-
-    /* ── Login strip ──────────────────────────────────────────────────── */
-    .login-strip {
-      margin-top: 12px;
-      padding: 10px 13px;
-      border-radius: 16px;
-      background: linear-gradient(180deg, #fbfdff 0%, #f8fafc 100%);
-      border: 1px solid rgba(99, 102, 241, 0.1);
-    }
-
-    .login-label {
-      color: var(--muted);
-      font-size: 10px;
-      text-transform: uppercase;
-      letter-spacing: 0.12em;
-      font-weight: 700;
-    }
-
-    .login-value {
-      margin-top: 3px;
-      font-size: 13px;
-      font-weight: 600;
-      color: var(--text);
-    }
-
-    .badge {
-      padding: 6px 10px;
-      border: 1px solid transparent;
-    }
-
-    .badge.safe {
-      color: #15803d;
-      background: #dcfce7;
-      border-color: #bbf7d0;
-    }
-
-    .badge.caution {
-      color: #b45309;
-      background: #fef3c7;
-      border-color: #fde68a;
-    }
-
-    .badge.unsafe {
-      color: #b91c1c;
-      background: #fee2e2;
-      border-color: #fecaca;
-    }
-
-    /* ── Stats ────────────────────────────────────────────────────────── */
-    .stats {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 0;
-      margin-top: 0;
-      border-bottom: 1px solid var(--line);
-    }
-
-    .stat {
-      border-radius: 0;
-      padding: 16px 10px;
-      text-align: center;
-      border-bottom: none;
-      border-right: 1px solid var(--line);
-    }
-
-    .stat:last-child {
-      border-right: none;
-    }
-
-    .stat strong {
-      display: block;
-      font-size: 20px;
-      color: var(--accent);
-    }
-
-    .stat span {
-      display: block;
-      margin-top: 3px;
-      color: var(--muted);
-      font-size: 10px;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-    }
-
-    /* ── Sections ─────────────────────────────────────────────────────── */
-    .section {
-      margin-top: 0;
-      border-radius: 0;
-      padding: 20px;
-    }
-
-    .section-title {
-      margin: 0;
-      font-size: 13px;
-      color: var(--text);
-    }
-
-    .section-meta {
-      color: var(--muted);
-      font-size: 9.5px;
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
-    }
-
-    .summary-box,
-    .reputation-box,
-    .list-item {
-      margin-top: 8px;
-      padding: 11px 12px;
-      border-radius: 14px;
-      background: linear-gradient(180deg, #fbfdff 0%, #f8fafc 100%);
-      border: 1px solid rgba(99, 102, 241, 0.08);
-    }
-
-    .summary-box,
-    .reputation-box {
-      font-size: 12.5px;
-      line-height: 1.6;
-      color: #334155;
-    }
-
-    .chip-row,
-    .list {
-      display: grid;
-      gap: 7px;
-      margin-top: 8px;
-    }
-
-    .chip {
-      display: inline-flex;
-      width: fit-content;
-      padding: 5px 10px;
-      color: #4338ca;
-      background: #eef2ff;
-      border: 1px solid #c7d2fe;
-      font-size: 11px;
-    }
-
-    .list-item {
-      font-size: 12px;
-      line-height: 1.55;
-      color: #334155;
-    }
-
-    /* ── Buttons ──────────────────────────────────────────────────────── */
-    .actions {
-      display: grid;
-      gap: 8px;
-      margin-top: 0;
-      padding: 20px;
-    }
-
-    button {
-      appearance: none;
-      border: none;
-      border-radius: 13px;
-      font-family: inherit;
-      font-size: 13px;
-      font-weight: 700;
-      cursor: pointer;
-      transition: transform 0.16s ease, box-shadow 0.16s ease, opacity 0.16s ease;
-    }
-
-    button:hover {
-      transform: translateY(-1px);
-    }
-
-    button:active {
-      transform: scale(0.98);
-    }
-
-    button:disabled {
-      cursor: not-allowed;
-      opacity: 0.45;
-      transform: none;
-    }
-
-    .primary-btn {
-      padding: 13px 16px;
-      color: #ffffff;
-      background: linear-gradient(135deg, #6366f1 0%, #0ea5e9 100%);
-      box-shadow: 0 4px 18px rgba(99, 102, 241, 0.28);
-    }
-
-    .primary-btn:hover {
-      box-shadow: 0 6px 24px rgba(99, 102, 241, 0.38);
-    }
-
-    .secondary-btn {
-      padding: 12px 16px;
-      color: #475569;
-      background: #f1f5f9;
-      border: 1px solid #e2e8f0;
-    }
-
-    .secondary-btn:hover {
-      background: #e8edf5;
-    }
-
-    .action-btn {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      min-height: 48px;
-    }
-
-    .compact-btn {
-      width: 100%;
-      min-height: 48px;
-    }
-
-    /* ── TTS Controls ─────────────────────────────────────────────────── */
-    .tts-controls {
-      display: flex;
-      gap: 8px;
-      margin-top: 12px;
-      padding-top: 12px;
-      border-top: 1px solid var(--line);
-    }
-
-    .tts-select {
-      flex: 1;
-      padding: 8px 12px;
-      border-radius: 10px;
-      border: 1px solid #e2e8f0;
-      font-family: inherit;
-      font-size: 13px;
-      color: #334155;
-      background: #ffffff;
-      outline: none;
-    }
-
-    .tts-btn {
-      padding: 8px 16px;
-    }
-
-    /* ── Chatbot ──────────────────────────────────────────────────────── */
-    .chat-window {
-      max-height: 180px;
-      overflow-y: auto;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      padding: 10px;
-      background: #f8fafc;
-      border: 1px solid rgba(99, 102, 241, 0.08);
-      border-radius: 12px;
-      margin-top: 8px;
-      font-size: 13px;
-      line-height: 1.5;
-    }
-
-    .chat-message {
-      padding: 8px 12px;
-      border-radius: 10px;
-    }
-
-    .chat-ai {
-      align-self: flex-start;
-      background: #eef2ff;
-      color: #312e81;
-      border-bottom-left-radius: 0;
-    }
-
-    .chat-user {
-      align-self: flex-end;
-      background: #6366f1;
-      color: #ffffff;
-      border-bottom-right-radius: 0;
-    }
-
-    .chat-input-row {
-      display: flex;
-      gap: 8px;
-      margin-top: 10px;
-      align-items: center;
-    }
-
-    #chat-input {
-      flex: 1;
-      padding: 10px 14px;
-      border-radius: 12px;
-      border: 1px solid #e2e8f0;
-      font-family: inherit;
-      font-size: 13px;
-      color: #334155;
-      outline: none;
-    }
-
-    #chat-input:focus {
-      border-color: #6366f1;
-    }
-
-    .chat-send-btn {
-      padding: 0 16px;
-      display: grid;
-      place-items: center;
-      min-width: 56px;
-      height: 54px;
-    }
-
-    .chat-mic-btn {
-      padding: 0;
-      width: 54px;
-      height: 54px;
-      display: grid;
-      place-items: center;
-      flex-shrink: 0;
-      border-radius: 16px;
-      color: #475569;
-      background: #ffffff;
-      border: 1px solid #dbe4f0;
-      box-shadow: 0 8px 18px rgba(15, 23, 42, 0.06);
-    }
-
-    .chat-mic-btn:hover {
-      background: #f8fafc;
-      border-color: #cbd5e1;
-      box-shadow: 0 10px 22px rgba(15, 23, 42, 0.1);
-    }
-
-    .chat-mic-btn.listening {
-      color: #ffffff;
-      background: linear-gradient(135deg, #f97316 0%, #ef4444 100%);
-      border-color: transparent;
-      box-shadow: 0 10px 24px rgba(239, 68, 68, 0.3);
-    }
-
-    .chat-mic-btn.recording {
-      color: #ffffff;
-      background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-      border-color: transparent;
-      box-shadow: 0 10px 28px rgba(239, 68, 68, 0.45);
-      animation: mic-pulse 1.1s ease-in-out infinite;
-    }
-
-    @keyframes mic-pulse {
-      0%, 100% { box-shadow: 0 10px 28px rgba(239, 68, 68, 0.45); transform: scale(1); }
-      50%       { box-shadow: 0 10px 38px rgba(239, 68, 68, 0.7);  transform: scale(1.06); }
-    }
-
-    .chat-mic-btn:disabled {
-      background: #f8fafc;
-      border-color: #e2e8f0;
-      box-shadow: none;
-    }
-
-    /* ── Footer ───────────────────────────────────────────────────────── */
-    .footer-note {
-      margin-top: 0;
-      padding: 0 20px 24px;
-      color: var(--muted);
-      font-size: 10.5px;
-      text-align: center;
-      line-height: 1.5;
-    }
-
-    .footer-note a {
-      color: var(--accent);
-      text-decoration: none;
-      font-weight: 600;
-    }
-
-    /* ── Document / Image Upload ──────────────────────────────────────── */
-    .drop-zone {
-      margin-top: 10px;
-      border: 2px dashed rgba(99, 102, 241, 0.3);
-      border-radius: 18px;
-      padding: 18px 12px;
-      text-align: center;
-      background: linear-gradient(180deg, #fbfdff 0%, #f8fafc 100%);
-      cursor: pointer;
-      transition: border-color 0.2s, background 0.2s;
-      position: relative;
-    }
-
-    .drop-zone.drag-over {
-      border-color: var(--accent);
-      background: #eef2ff;
-    }
-
-    .drop-zone input[type="file"] {
-      position: absolute;
-      inset: 0;
-      opacity: 0;
-      cursor: pointer;
-      width: 100%;
-      height: 100%;
-    }
-
-    .drop-icon {
-      width: 36px;
-      height: 36px;
-      margin: 0 auto 8px;
-      border-radius: 10px;
-      background: linear-gradient(135deg, #ede9fe, #dbeafe);
-      border: 1px solid rgba(99, 102, 241, 0.2);
-      display: grid;
-      place-items: center;
-    }
-
-    .drop-label {
-      font-size: 12.5px;
-      font-weight: 600;
-      color: var(--text);
-    }
-
-    .drop-hint {
-      font-size: 10.5px;
-      color: var(--muted);
-      margin-top: 3px;
-    }
-
-    .file-preview {
-      margin-top: 10px;
-      border-radius: 16px;
-      overflow: hidden;
-      display: none;
-      border: 1px solid rgba(99, 102, 241, 0.12);
-      background: #f1f5f9;
-    }
-
-    .file-preview img {
-      width: 100%;
-      max-height: 120px;
-      object-fit: contain;
-      display: block;
-    }
-
-    .file-preview .file-name-bar {
-      padding: 6px 10px;
-      font-size: 11px;
-      color: var(--muted);
-      font-weight: 600;
-      background: #f8fafc;
-      border-top: 1px solid rgba(99, 102, 241, 0.1);
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    #doc-analyze-btn {
-      margin-top: 10px;
-      width: 100%;
-    }
-
-    .doc-results {
-      margin-top: 10px;
-      display: none;
-      gap: 8px;
-      flex-direction: column;
-    }
-
-    .doc-results.visible {
-      display: flex;
-    }
-
-    .doc-result-block {
-      padding: 10px 12px;
-      border-radius: 14px;
-      background: linear-gradient(180deg, #fbfdff 0%, #f8fafc 100%);
-      border: 1px solid rgba(99, 102, 241, 0.08);
-    }
-
-    .doc-result-label {
-      font-size: 9.5px;
-      text-transform: uppercase;
-      letter-spacing: 0.12em;
-      font-weight: 700;
-      color: var(--accent);
-      margin-bottom: 5px;
-    }
-
-    .doc-result-text {
-      font-size: 12px;
-      color: #334155;
-      line-height: 1.6;
-    }
-
-    .doc-list {
-      list-style: none;
-      margin: 0;
-      padding: 0;
-      display: flex;
-      flex-direction: column;
-      gap: 5px;
-    }
-
-    .doc-list li {
-      font-size: 11.5px;
-      color: #334155;
-      line-height: 1.5;
-      padding-left: 14px;
-      position: relative;
-    }
-
-    .doc-list li::before {
-      content: "•";
-      position: absolute;
-      left: 0;
-      color: var(--accent);
-    }
-
-    .doc-list.risk li::before {
-      content: "⚠";
-      color: var(--bad);
-    }
-
-    .doc-extracted-toggle {
-      font-size: 11px;
-      color: var(--accent);
-      font-weight: 600;
-      cursor: pointer;
-      background: none;
-      border: none;
-      padding: 0;
-      margin-top: 4px;
-      border-radius: 0;
-      box-shadow: none;
-      transform: none !important;
-    }
-
-    .doc-extracted-text {
-      margin-top: 6px;
-      max-height: 100px;
-      overflow-y: auto;
-      font-size: 11px;
-      color: var(--muted);
-      line-height: 1.5;
-      display: none;
-    }
-
-    .doc-extracted-text.open {
-      display: block;
-    }
-
-    .doc-status {
-      margin-top: 8px;
-      font-size: 11.5px;
-      color: var(--muted);
-      text-align: left;
-      min-height: 18px;
-    }
-
-    .doc-status.error { color: var(--bad); }
-    .doc-status.loading { color: var(--accent); }
-
-    .quick-upload {
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-      padding: 14px;
-      border-radius: 18px;
-      background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
-      border: 1px solid rgba(99, 102, 241, 0.1);
-      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
-    }
-
-    .quick-upload-head {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px;
-    }
-
-    .quick-upload-title {
-      font-size: 12px;
-      font-weight: 700;
-      color: var(--text);
-    }
-
-    .quick-upload-meta {
-      font-size: 10px;
-      font-weight: 700;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      color: var(--muted);
-    }
-
-    .quick-upload-actions {
-      display: grid;
-      grid-template-columns: 1fr;
-      gap: 10px;
-    }
-
-    /* ── Welcome Screen ───────────────────────────────────────────────── */
-    .welcome-shell {
-      position: relative;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      min-height: 620px;
-      padding: 26px;
-      overflow: hidden;
-      text-align: center;
-      background:
-        radial-gradient(circle at top left, rgba(191, 219, 254, 0.45), transparent 34%),
-        radial-gradient(circle at top right, rgba(226, 232, 240, 0.8), transparent 36%),
-        linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
-    }
-
-    .welcome-shell::before,
-    .welcome-shell::after {
-      content: "";
-      position: absolute;
-      border-radius: 50%;
-      pointer-events: none;
-    }
-
-    .welcome-shell::before {
-      width: 220px;
-      height: 220px;
-      top: -72px;
-      right: -88px;
-      background: radial-gradient(circle, rgba(125, 211, 252, 0.28), rgba(125, 211, 252, 0));
-    }
-
-    .welcome-shell::after {
-      width: 180px;
-      height: 180px;
-      bottom: -64px;
-      left: -70px;
-      background: radial-gradient(circle, rgba(196, 181, 253, 0.24), rgba(196, 181, 253, 0));
-    }
-
-    .welcome-content {
-      position: relative;
-      z-index: 1;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 16px;
-      width: 100%;
-      padding: 28px 22px 22px;
-      border-radius: 28px;
-      border: 1px solid rgba(148, 163, 184, 0.18);
-      background: rgba(255, 255, 255, 0.82);
-      box-shadow: 0 22px 60px rgba(15, 23, 42, 0.08);
-      backdrop-filter: blur(12px);
-      animation: cg-slideUp 0.4s ease forwards;
-    }
-
-    .welcome-badge {
-      padding: 7px 12px;
-      border-radius: 999px;
-      font-size: 10px;
-      font-weight: 700;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      color: #4f46e5;
-      background: rgba(238, 242, 255, 0.92);
-      border: 1px solid rgba(99, 102, 241, 0.12);
-    }
-
-    .welcome-icon {
-      width: 82px;
-      height: 82px;
-      border-radius: 26px;
-      background: linear-gradient(145deg, #f8fbff, #eef5ff);
-      border: 1px solid rgba(148, 163, 184, 0.18);
-      display: grid;
-      place-items: center;
-      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
-    }
-
-    .welcome-title {
-      font-size: 26px;
-      font-weight: 700;
-      color: var(--text);
-      margin: 0;
-      line-height: 1.2;
-      letter-spacing: -0.03em;
-    }
-
-    .welcome-desc {
-      max-width: 280px;
-      font-size: 13px;
-      color: #64748b;
-      line-height: 1.7;
-      margin: 0;
-    }
-
-    .welcome-highlights {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 8px;
-      width: 100%;
-      margin-top: 2px;
-    }
-
-    .welcome-highlight {
-      padding: 11px 8px;
-      border-radius: 18px;
-      background: rgba(248, 250, 252, 0.92);
-      border: 1px solid rgba(226, 232, 240, 0.95);
-      font-size: 10px;
-      font-weight: 600;
-      line-height: 1.45;
-      color: #475569;
-      text-align: center;
-    }
-
-    .welcome-btn {
-      width: 100%;
-      margin-top: 4px;
-      padding: 16px 20px;
-      font-size: 15px;
-      border-radius: 16px;
-    }
-
-    .onboarding-shell {
-      align-items: flex-start;
-      padding-top: 22px;
-    }
-
-    .onboarding-content {
-      align-items: stretch;
-      text-align: left;
-      padding-top: 24px;
-    }
-
-    .onboarding-header {
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-      margin-bottom: 8px;
-    }
-
-    .onboarding-art {
-      position: relative;
-      width: 100%;
-      height: 118px;
-      overflow: hidden;
-      border-radius: 22px;
-      border: 1px solid rgba(226, 232, 240, 0.95);
-      background:
-        radial-gradient(circle at 20% 20%, rgba(147, 197, 253, 0.35), transparent 26%),
-        radial-gradient(circle at 80% 30%, rgba(196, 181, 253, 0.28), transparent 24%),
-        linear-gradient(135deg, #f8fbff 0%, #ffffff 100%);
-    }
-
-    .onboarding-art::before {
-      content: "";
-      position: absolute;
-      inset: 18px 22px auto auto;
-      width: 124px;
-      height: 124px;
-      border-radius: 28px;
-      border: 1px solid rgba(148, 163, 184, 0.16);
-      background: rgba(255, 255, 255, 0.7);
-      transform: rotate(18deg);
-    }
-
-    .onboarding-art::after {
-      content: "";
-      position: absolute;
-      left: 24px;
-      bottom: 20px;
-      width: 150px;
-      height: 54px;
-      border-radius: 18px;
-      background: linear-gradient(180deg, rgba(255, 255, 255, 0.95), rgba(248, 250, 252, 0.95));
-      border: 1px solid rgba(226, 232, 240, 0.9);
-      box-shadow: 0 12px 24px rgba(148, 163, 184, 0.12);
-    }
-
-    .onboarding-art-copy {
-      position: absolute;
-      left: 40px;
-      bottom: 36px;
-      z-index: 1;
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-    }
-
-    .onboarding-art-line {
-      height: 7px;
-      border-radius: 999px;
-      background: linear-gradient(90deg, rgba(99, 102, 241, 0.24), rgba(14, 165, 233, 0.14));
-    }
-
-    .onboarding-art-line.short {
-      width: 72px;
-    }
-
-    .onboarding-art-line.long {
-      width: 102px;
-    }
-
-    /* ── Onboarding Screen ────────────────────────────────────────────── */
-    .onboard-form {
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
-      width: 100%;
-    }
-
-    .onboard-label {
-      font-size: 11px;
-      font-weight: 700;
-      color: var(--muted);
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      margin-bottom: 4px;
-    }
-
-    .onboard-input {
-      width: 100%;
-      padding: 13px 14px;
-      border-radius: 14px;
-      border: 1px solid #dbe4ee;
-      font-family: inherit;
-      font-size: 13px;
-      color: var(--text);
-      background: rgba(248, 250, 252, 0.95);
-      outline: none;
-      transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
-    }
-
-    .onboard-input:focus {
-      border-color: var(--accent);
-      background: #ffffff;
-      box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.08);
-    }
-
-    .onboard-chips {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-    }
-
-    .onboard-chip {
-      padding: 8px 13px;
-      border-radius: 999px;
-      font-size: 11px;
-      font-weight: 600;
-      color: #475569;
-      background: rgba(248, 250, 252, 0.95);
-      border: 1px solid #dbe4ee;
-      cursor: pointer;
-      user-select: none;
-      transition: all 0.2s;
-    }
-
-    .onboard-chip.selected {
-      background: #eef2ff;
-      color: var(--accent);
-      border-color: var(--accent);
-      box-shadow: 0 8px 18px rgba(99, 102, 241, 0.12);
-    }
-
-    /* ── Global Language Selector ─────────────────────────────────────── */
-    .global-lang-row {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      margin-top: 10px;
-      padding: 8px 12px;
-      border-radius: 14px;
-      background: linear-gradient(135deg, rgba(238,242,255,0.85), rgba(240,249,255,0.85));
-      border: 1px solid rgba(99,102,241,0.15);
-      box-shadow: 0 2px 8px rgba(99,102,241,0.06);
-    }
-
-    .global-lang-label {
-      display: flex;
-      align-items: center;
-      gap: 5px;
-      font-size: 11px;
-      font-weight: 700;
-      letter-spacing: 0.05em;
-      text-transform: uppercase;
-      color: var(--accent);
-      white-space: nowrap;
-      cursor: default;
-    }
-
-    .global-lang-select {
-      flex: 1;
-      padding: 6px 10px;
-      border-radius: 10px;
-      border: 1px solid rgba(99,102,241,0.22);
-      background: #ffffff;
-      font-family: inherit;
-      font-size: 12.5px;
-      font-weight: 600;
-      color: var(--text);
-      cursor: pointer;
-      outline: none;
-      transition: border-color 0.2s, box-shadow 0.2s;
-      appearance: none;
-      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none'%3E%3Cpath d='M7 10l5 5 5-5' stroke='%236366f1' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E");
-      background-repeat: no-repeat;
-      background-position: right 10px center;
-      padding-right: 28px;
-    }
-
-    .global-lang-select:focus {
-      border-color: var(--accent);
-      box-shadow: 0 0 0 3px rgba(99,102,241,0.12);
-    }
-  </style>
+  <link rel="stylesheet" href="../assets/fonts/fonts.css" />
+  <link rel="stylesheet" href="../styles/tokens.css" />
+  <link rel="stylesheet" href="../styles/popup.css" />
 </head>
 
 <body>
-  <main class="welcome-shell" id="welcome-screen">
-    <div class="welcome-content">
-      <div class="welcome-badge">Private by design</div>
-      <div class="welcome-icon">
-        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-          <path d="M12 2L4 6V12C4 16.8 7.2 20.9 12 22C16.8 20.9 20 16.8 20 12V6L12 2Z" fill="url(#welcomeShield)" />
-          <path d="M8.8 12.2L10.9 14.3L15.6 9.6" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-          <defs>
-            <linearGradient id="welcomeShield" x1="4" y1="2" x2="20" y2="22" gradientUnits="userSpaceOnUse">
-              <stop offset="0%" stop-color="#6366f1" />
-              <stop offset="100%" stop-color="#0ea5e9" />
-            </linearGradient>
-          </defs>
+  <!-- ── Welcome ─────────────────────────────────────────────────────── -->
+  <main class="welcome" id="welcome-screen" hidden>
+    <div class="welcome__mark" aria-hidden="true">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+        <path d="M12 2L4 6V12C4 16.8 7.2 20.9 12 22C16.8 20.9 20 16.8 20 12V6L12 2Z" fill="var(--ink)" />
+        <path d="M8.8 12.2L10.9 14.3L15.6 9.6" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+      </svg>
+    </div>
+    <h1 data-i18n="welcomeTitle">ConsentWise AI</h1>
+    <p data-i18n="welcomeDesc">A calm, clear way to review terms and spot risky clauses before you agree.</p>
+    <button class="btn" id="get-started-btn" data-i18n="getStarted">Get Started</button>
+  </main>
+
+  <!-- ── Main app ────────────────────────────────────────────────────── -->
+  <div id="main-app" hidden>
+    <header class="topbar">
+      <div class="brand">
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M12 2L4 6V12C4 16.8 7.2 20.9 12 22C16.8 20.9 20 16.8 20 12V6L12 2Z" fill="var(--ink)" />
+          <path d="M8.8 12.2L10.9 14.3L15.6 9.6" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
         </svg>
+        <b>ConsentWise</b>
       </div>
-      <h1 class="welcome-title">Welcome to ConsentWise AI</h1>
-      <p class="welcome-desc">A calm, clear way to review privacy terms, spot risky clauses, and understand what a service is really asking from you.</p>
-      <div class="welcome-highlights" aria-hidden="true">
-        <div class="welcome-highlight">Terms made easier to scan</div>
-        <div class="welcome-highlight">Privacy signals at a glance</div>
-        <div class="welcome-highlight">Minimal, distraction-free flow</div>
-      </div>
-      <button class="primary-btn welcome-btn" id="get-started-btn">Get Started</button>
+      <button class="avatar-btn" id="profile-btn" type="button" aria-label="Profile and settings">CW</button>
+    </header>
+
+    <nav class="tabs" role="tablist" aria-label="Sections">
+      <button class="tab" role="tab" id="tab-scan" aria-controls="panel-scan" aria-selected="true" data-tab="scan" data-i18n="tabScan">Scan</button>
+      <button class="tab" role="tab" id="tab-chat" aria-controls="panel-chat" aria-selected="false" tabindex="-1" data-tab="chat" data-i18n="tabChat">Chat</button>
+      <button class="tab" role="tab" id="tab-quiz" aria-controls="panel-quiz" aria-selected="false" tabindex="-1" data-tab="quiz" data-i18n="tabQuiz">Quiz</button>
+      <button class="tab" role="tab" id="tab-doc" aria-controls="panel-doc" aria-selected="false" tabindex="-1" data-tab="doc" data-i18n="tabDoc">Document</button>
+    </nav>
+
+    <div class="banner" id="banner" role="status" aria-live="polite">
+      <span id="banner-text"></span>
+      <button type="button" id="banner-close" aria-label="Dismiss">&times;</button>
     </div>
-  </main>
 
-  <main class="welcome-shell onboarding-shell" id="onboarding-screen" style="display: none;">
-    <div class="welcome-content onboarding-content">
-      <div class="onboarding-art" aria-hidden="true">
-        <div class="onboarding-art-copy">
-          <div class="onboarding-art-line long"></div>
-          <div class="onboarding-art-line short"></div>
-        </div>
-      </div>
-      <div class="onboarding-header">
-        <div class="welcome-badge">Quick setup</div>
-        <h1 class="welcome-title" style="font-size: 22px;">Let's personalize your checks</h1>
-        <p class="welcome-desc" style="max-width: none; font-size: 12px;">Tell us what matters most, and we’ll bring those clauses forward whenever you review a policy.</p>
-      </div>
-      
-      <div class="onboard-form">
-        <div>
-          <div class="onboard-label">Personal Details</div>
-          <input type="text" id="onboard-name" class="onboard-input" placeholder="Your Name" autocomplete="name" style="margin-bottom: 8px;" />
-          <input type="email" id="onboard-email" class="onboard-input" placeholder="Your Email" autocomplete="email" />
-        </div>
-        
-        <div>
-          <div class="onboard-label">I'm most interested in...</div>
-          <div class="onboard-chips" id="onboard-chips-container">
-            <div class="onboard-chip">Hidden Charges</div>
-            <div class="onboard-chip">Unfair Terms</div>
-            <div class="onboard-chip">Privacy</div>
-            <div class="onboard-chip">Data Sharing / Selling</div>
-            <div class="onboard-chip">Encryption</div>
-            <div class="onboard-chip">Autopay & Subs</div>
-            <div class="onboard-chip">Manipulation</div>
-            <div class="onboard-chip selected">Equal Importance</div>
-            <div class="onboard-chip">Other</div>
+    <div class="body">
+      <!-- ── Scan ──────────────────────────────────────────────────── -->
+      <section class="tab-panel active" id="panel-scan" role="tabpanel" aria-labelledby="tab-scan" data-panel="scan">
+        <div class="verdict" id="verdict" aria-live="polite">
+          <div class="verdict__row">
+            <span class="verdict__glyph" id="verdict-glyph">▲</span>
+            <span class="verdict__word" id="verdict-word" data-i18n="notScanned">Not scanned yet</span>
+            <span class="verdict__score" id="verdict-score"></span>
+          </div>
+          <div class="verdict__track" aria-hidden="true">
+            <span class="verdict__fill" id="verdict-fill"></span>
+            <span class="verdict__tick" id="verdict-tick" hidden></span>
+          </div>
+          <div class="verdict__hint" id="verdict-hint" data-i18n="verdictHint">Higher score means more risk.</div>
+          <div class="verdict__meta" id="verdict-meta" hidden>
+            <span id="verdict-trust"></span>
+            <span id="verdict-source"></span>
           </div>
         </div>
 
-        <button class="primary-btn welcome-btn" id="finish-setup-btn">Finish Setup</button>
-      </div>
-    </div>
-  </main>
+        <button class="btn btn--block" id="analyze-btn" data-i18n="analyzeBtn">Analyze this page</button>
 
-  <main class="shell" id="main-app" style="display: none;">
-    <section class="hero">
-      <div class="brand-row">
-        <div class="brand">
-          <div class="shield">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-              <path d="M12 2L4 6V12C4 16.8 7.2 20.9 12 22C16.8 20.9 20 16.8 20 12V6L12 2Z"
-                fill="url(#shieldGradient)" />
-              <path d="M8.8 12.2L10.9 14.3L15.6 9.6" stroke="white" stroke-width="1.8" stroke-linecap="round"
-                stroke-linejoin="round" />
-              <defs>
-                <linearGradient id="shieldGradient" x1="4" y1="2" x2="20" y2="22" gradientUnits="userSpaceOnUse">
-                  <stop offset="0%" stop-color="#6366f1" />
-                  <stop offset="100%" stop-color="#0ea5e9" />
-                </linearGradient>
-              </defs>
-            </svg>
+        <div class="summary" id="summary" hidden>
+          <div class="summary__head">
+            <span class="summary__title" data-i18n="summary">Summary</span>
+            <button class="tts-btn" id="tts-btn" type="button">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3a4.5 4.5 0 0 0-2.5-4v8a4.5 4.5 0 0 0 2.5-4z"/></svg>
+              <span id="tts-label" data-i18n="listenBtn">Listen</span>
+            </button>
+            <audio id="tts-audio" hidden></audio>
           </div>
-          <div>
-            <div class="eyebrow">ConsentWise AI</div>
-            <div class="title" data-i18n="title">Policy Reader</div>
+          <p class="summary__body clamp" id="summary-body"></p>
+          <button class="btn--quiet summary__more" id="summary-more" type="button" hidden data-i18n="showMore">Show more</button>
+        </div>
+
+        <details class="acc" id="acc-points" hidden>
+          <summary><span data-i18n="whatWeFound">What we found</span><span class="acc__count" id="points-count"></span></summary>
+          <div class="acc__body"><ul class="pointlist" id="points-list"></ul></div>
+        </details>
+
+        <details class="acc" id="acc-reputation" hidden>
+          <summary><span data-i18n="siteReputation">Site reputation</span><span class="acc__badge" id="rep-badge"></span></summary>
+          <div class="acc__body">
+            <p id="rep-body"></p>
+            <ul class="pointlist risk" id="rep-list" style="margin-top:var(--sp-2)"></ul>
+          </div>
+        </details>
+
+        <details class="acc" id="acc-login" hidden>
+          <summary><span data-i18n="loginSafety">Login safety</span><span class="acc__badge" id="login-badge"></span></summary>
+          <div class="acc__body"><p id="login-body"></p></div>
+        </details>
+
+        <a class="btn--quiet" id="full-report-link" href="#" data-i18n="openFullReport" hidden>Open full report</a>
+      </section>
+
+      <!-- ── Chat ──────────────────────────────────────────────────── -->
+      <section class="tab-panel" id="panel-chat" role="tabpanel" aria-labelledby="tab-chat" data-panel="chat">
+        <p class="locked-hint" data-locked data-i18n="analyzeFirstHint">Analyze a page or a document first, then come back to chat about it.</p>
+        <div id="chat" data-needs-analysis hidden>
+          <div class="chat-window" id="chat-window">
+            <div class="chat-msg ai" data-i18n="chatWelcome">Ask me anything about this agreement. You can ask in any supported language.</div>
+          </div>
+          <div class="chat-composer">
+            <button class="chat-icon-btn" id="chat-mic" type="button" aria-label="Speak your question">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+                <path d="M12 15.5A3.5 3.5 0 0 0 15.5 12V7A3.5 3.5 0 1 0 8.5 7v5a3.5 3.5 0 0 0 3.5 3.5Z" fill="currentColor" />
+                <path d="M6.5 11.5A5.5 5.5 0 0 0 17.5 11.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+                <path d="M12 17v3.5M9 20.5h6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+              </svg>
+            </button>
+            <textarea id="chat-input" rows="1" placeholder="Type your question…" data-i18n-placeholder="chatPlaceholder"></textarea>
+            <button class="chat-icon-btn send" id="chat-send" type="button" aria-label="Send">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M2 21l21-9L2 3l.01 7L17 12 2.01 14z"/></svg>
+            </button>
           </div>
         </div>
-        <div class="hero-tools">
-          <div class="status-pill" id="protection-label" data-i18n-on="protectionOn" data-i18n-off="protectionOff">Protection On</div>
-          <button class="toggle-pill is-on" id="protection-toggle" type="button" aria-label="Toggle protection" aria-pressed="true"></button>
-        </div>
-      </div>
+      </section>
 
-      <p class="hero-copy" data-i18n="heroCopy">Scan the current page or upload a document for a quick, readable safety check.</p>
-
-      <div class="hero-actions">
-        <button class="primary-btn action-btn compact-btn" id="analyze-current" data-i18n="analyzeBtn">Analyze This Page</button>
-        <button class="secondary-btn action-btn compact-btn" id="open-latest" disabled data-i18n="latestBtn">Open Latest Report</button>
-      </div>
-
-      <!-- ── Global Language Selector ────────────────────────────────── -->
-      <div class="global-lang-row" id="global-lang-row">
-        <label class="global-lang-label" for="global-lang">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true" style="flex-shrink:0;">
-            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93V18c0-.55.45-1 1-1s1 .45 1 1v1.93c-3.95-.49-7-3.85-7-7.93h2c0 3.31 2.69 6 6 6s6-2.69 6-6h2c0 4.08-3.05 7.44-7 7.93zM11 4.07V6c0 .55-.45 1-1 1s-1-.45-1-1V4.07C5.05 4.56 2 7.92 2 12H0C0 6.48 4.48 2 10 2h.07C10.72 2.01 11 2.52 11 4.07z" fill="currentColor"/>
-          </svg>
-          <span data-i18n="langLabel">Language</span>
-        </label>
-        <select id="global-lang" class="global-lang-select">
-          <option value="en-IN">Indian English</option>
-          <option value="hi-IN">Hindi</option>
-          <option value="mr-IN">Marathi</option>
-          <option value="ta-IN">Tamil</option>
-          <option value="te-IN">Telugu</option>
-          <option value="bn-IN">Bengali</option>
-          <option value="gu-IN">Gujarati</option>
-          <option value="kn-IN">Kannada</option>
-          <option value="ml-IN">Malayalam</option>
-          <option value="pa-IN">Punjabi</option>
-        </select>
-      </div>
-
-      <div class="meter-grid">
-        <div class="meter-card">
-          <div class="meter-label" data-i18n="dangerScore">Danger Score</div>
-          <div class="meter-ring" id="danger-ring">
-            <div>
-              <div class="meter-value" id="danger-value">--</div>
-              <div class="meter-caption" data-i18n="risk">Risk</div>
+      <!-- ── Quiz ──────────────────────────────────────────────────── -->
+      <section class="tab-panel" id="panel-quiz" role="tabpanel" aria-labelledby="tab-quiz" data-panel="quiz">
+        <p class="locked-hint" data-locked data-i18n="analyzeFirstHint">Analyze a page or a document first, then test what it really says.</p>
+        <div id="quiz" data-needs-analysis hidden>
+          <button class="btn btn--secondary btn--block" id="quiz-generate" data-i18n="generateQuiz">Generate quiz</button>
+          <div id="quiz-run" hidden>
+            <div class="quiz-progress" id="quiz-progress">
+              <span id="quiz-count">1 / 5</span>
+              <span class="bar"><span id="quiz-bar" style="width:0%"></span></span>
+            </div>
+            <div class="quiz-body">
+              <p class="quiz-q" id="quiz-q"></p>
+              <button class="quiz-opt" id="quiz-a" type="button"></button>
+              <button class="quiz-opt" id="quiz-b" type="button"></button>
+              <div class="quiz-explain" id="quiz-explain" hidden></div>
+            </div>
+            <div class="quiz-foot">
+              <button class="btn btn--block" id="quiz-next" hidden data-i18n="nextQuestion">Next question</button>
             </div>
           </div>
-          <div class="meter-title" id="danger-title" data-i18n="readyToScan">Ready to Scan</div>
-          <div class="meter-copy" id="danger-copy" data-i18n="waitingAnalysis">Waiting for analysis.</div>
         </div>
+      </section>
 
-        <div class="meter-card">
-          <div class="meter-label" data-i18n="reputationScore">Reputation Score</div>
-          <div class="meter-ring" id="reputation-ring">
-            <div>
-              <div class="meter-value" id="reputation-value">--</div>
-              <div class="meter-caption" data-i18n="trust">Trust</div>
+      <!-- ── Document ──────────────────────────────────────────────── -->
+      <section class="tab-panel" id="panel-doc" role="tabpanel" aria-labelledby="tab-doc" data-panel="doc">
+        <div id="doc">
+          <div class="drop-zone" id="drop-zone">
+            <input type="file" id="doc-file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,application/pdf" />
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M12 16V7M8.5 10.5L12 7l3.5 3.5M6 18h12" stroke="var(--ink-2)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+            <span class="label" id="doc-label" data-i18n="dropLabel">Drop an image or PDF</span>
+            <span class="hint" data-i18n="dropHint">or click to choose a file</span>
+          </div>
+          <div class="doc-status" id="doc-status"></div>
+          <button class="btn btn--block" id="doc-analyze" disabled data-i18n="analyzeDocBtn">Analyze document</button>
+          <div class="doc-results" id="doc-results">
+            <div class="doc-block"><div class="k" data-i18n="summary">Summary</div><div class="v" id="doc-summary"></div></div>
+            <div class="doc-block"><div class="k" data-i18n="keyPoints">Key points</div><ul class="pointlist" id="doc-points"></ul></div>
+            <div class="doc-block"><div class="k" data-i18n="risks">Risks</div><ul class="pointlist risk" id="doc-risks"></ul></div>
+            <div class="doc-block"><div class="k" data-i18n="accessibilityHint">In plain words</div><div class="v" id="doc-hint"></div></div>
+            <div class="doc-block">
+              <div class="k" data-i18n="extractedText">Extracted text</div>
+              <button class="doc-raw-toggle" id="doc-raw-toggle" data-i18n="showRaw">Show raw text</button>
+              <div class="doc-raw" id="doc-raw"></div>
             </div>
           </div>
-          <div class="meter-title" id="reputation-title" data-i18n="awaitingSite">Awaiting Site Check</div>
-          <div class="meter-copy" id="reputation-copy" data-i18n="noReputation">No reputation assessment yet.</div>
         </div>
+      </section>
+    </div>
+  </div>
+
+  <!-- ── Profile & settings sheet ────────────────────────────────────── -->
+  <div id="sheet-backdrop"></div>
+  <aside class="sheet" id="sheet" aria-hidden="true" aria-label="Profile and settings">
+    <div class="sheet__head">
+      <h2 data-i18n="profileTitle">Profile</h2>
+      <button class="icon-btn" id="sheet-close" type="button" aria-label="Close">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" /></svg>
+      </button>
+    </div>
+    <div class="sheet__avatar" id="sheet-avatar">CW</div>
+
+    <div class="field">
+      <label for="pf-name" data-i18n="personalDetails">Your details</label>
+      <input type="text" id="pf-name" autocomplete="name" placeholder="Name" data-i18n-placeholder="namePlaceholder" />
+      <input type="email" id="pf-email" autocomplete="email" placeholder="Email" data-i18n-placeholder="emailPlaceholder" />
+    </div>
+
+    <div class="field">
+      <span class="field-label" data-i18n="interestsLabel">What matters most to you</span>
+      <div class="chips" id="chips">
+        <button class="chip" type="button" data-chip="Hidden charges">Hidden charges</button>
+        <button class="chip" type="button" data-chip="Unfair terms">Unfair terms</button>
+        <button class="chip" type="button" data-chip="Privacy">Privacy</button>
+        <button class="chip" type="button" data-chip="Data selling">Data selling</button>
+        <button class="chip" type="button" data-chip="Autopay">Autopay &amp; subs</button>
+        <button class="chip" type="button" data-chip="Manipulation">Manipulation</button>
       </div>
+    </div>
 
-      <div class="login-strip">
-        <div>
-          <div class="login-label" data-i18n="loginSafety">Login Safety</div>
-          <div class="login-value" id="login-copy" data-i18n="analyzeSite">Analyze a site before entering credentials.</div>
-        </div>
-        <div class="badge caution" id="login-badge" data-i18n="caution">Caution</div>
+    <div class="sheet__divider"></div>
+    <div class="sheet__group-title" data-i18n="settingsLabel">Settings</div>
+
+    <div class="field">
+      <label for="global-lang" data-i18n="langLabel">Language</label>
+      <select id="global-lang">
+        <option value="en-IN">English (India)</option>
+        <option value="hi-IN">हिन्दी</option>
+        <option value="mr-IN">मराठी</option>
+        <option value="ta-IN">தமிழ்</option>
+        <option value="te-IN">తెలుగు</option>
+        <option value="bn-IN">বাংলা</option>
+        <option value="gu-IN">ગુજરાતી</option>
+        <option value="kn-IN">ಕನ್ನಡ</option>
+        <option value="ml-IN">മലയാളം</option>
+        <option value="pa-IN">ਪੰਜਾਬੀ</option>
+      </select>
+    </div>
+
+    <div class="row">
+      <div>
+        <div class="row__label" data-i18n="protectionRow">Protection</div>
+        <div class="row__sub" id="protection-sub" data-i18n-on="protectionOn" data-i18n-off="protectionOff">On</div>
       </div>
-    </section>
+      <button class="toggle" id="protection-toggle" type="button" role="switch" aria-checked="true" aria-label="Toggle protection"></button>
+    </div>
 
-    <section class="stats">
-      <div class="stat">
-        <strong id="stat-blocked">0</strong>
-        <span data-i18n="protected">Protected</span>
+    <div class="stat-grid">
+      <div class="stat"><b id="stat-intercepts">0</b><span data-i18n="protected">Caught</span></div>
+      <div class="stat"><b id="stat-analyses">0</b><span data-i18n="analyzed">Analyzed</span></div>
+    </div>
+
+    <div class="sheet__divider"></div>
+    <div class="sheet__group-title" data-i18n="yourData">Your data</div>
+    <p class="row__sub" style="margin-bottom:var(--sp-3)" data-i18n="whatWeSend">When you analyze a page, its text, title and address are sent to the ConsentWise backend and read by an AI model.</p>
+    <div class="row">
+      <div>
+        <div class="row__label" data-i18n="deviceId">Device ID</div>
+        <div class="row__sub mono" id="device-id">—</div>
       </div>
-      <div class="stat">
-        <strong id="stat-tabs">0</strong>
-        <span data-i18n="analyzed">Analyzed</span>
+      <div style="display:flex; gap:var(--sp-2)">
+        <button class="btn--quiet" id="device-copy" type="button" data-i18n="copy">Copy</button>
+        <button class="btn--quiet" id="device-reset" type="button" data-i18n="resetId">Reset</button>
       </div>
-    </section>
+    </div>
+    <div class="sheet__actions">
+      <button class="btn btn--secondary btn--block" id="data-download" type="button" data-i18n="downloadData">Download my data</button>
+      <button class="btn btn--secondary btn--block" id="data-delete" type="button" data-i18n="deleteData">Delete my data</button>
+    </div>
 
-    <section class="section" id="doc-upload-section">
-      <div class="section-head">
-        <h2 class="section-title" data-i18n="docImage">Document / Image</h2>
-        <div class="section-meta" data-i18n="dashboardTool">Dashboard Tool</div>
-      </div>
-
-      <div class="quick-upload">
-        <div class="quick-upload-head">
-          <div class="quick-upload-title" data-i18n="uploadToAnalyze">Upload to analyze</div>
-          <div class="quick-upload-meta">Vision AI</div>
-        </div>
-
-        <div class="drop-zone" id="drop-zone">
-          <input type="file" id="doc-file-input" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,application/pdf" />
-          <div class="drop-icon">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 13H9l3-7 3 7h-2v2h-2v-2zm1-9.5c.83 0 1.5.67 1.5 1.5S12.83 8.5 12 8.5 10.5 7.83 10.5 7s.67-1.5 1.5-1.5z" fill="url(#uploadGradient)"/>
-              <defs>
-                <linearGradient id="uploadGradient" x1="2" y1="2" x2="22" y2="22" gradientUnits="userSpaceOnUse">
-                  <stop offset="0%" stop-color="#6366f1"/>
-                  <stop offset="100%" stop-color="#0ea5e9"/>
-                </linearGradient>
-              </defs>
-            </svg>
-          </div>
-          <div class="drop-label" data-i18n="dropLabel">Drop image or PDF here</div>
-          <div class="drop-hint" data-i18n="dropHint">Or click to browse</div>
-        </div>
-
-        <div class="file-preview" id="doc-file-preview">
-          <img id="doc-preview-img" src="" alt="Preview" />
-          <div class="file-name-bar" id="doc-file-name">-</div>
-        </div>
-
-        <div class="doc-status" id="doc-status"></div>
-
-        <div class="quick-upload-actions">
-          <button class="primary-btn action-btn" id="doc-analyze-btn" disabled data-i18n="analyzeDocBtn">Analyze Document</button>
-        </div>
-      </div>
-
-      <div class="doc-results" id="doc-results">
-
-        <div class="doc-result-block">
-          <div class="doc-result-label" data-i18n="summary">Summary</div>
-          <div class="doc-result-text" id="doc-summary"></div>
-        </div>
-
-        <div class="doc-result-block">
-          <div class="doc-result-label" data-i18n="keyPoints">Key Points</div>
-          <ul class="doc-list" id="doc-key-points"></ul>
-        </div>
-
-        <div class="doc-result-block">
-          <div class="doc-result-label" data-i18n="risks">Risks</div>
-          <ul class="doc-list risk" id="doc-risks"></ul>
-        </div>
-
-        <div class="doc-result-block">
-          <div class="doc-result-label" data-i18n="accessibilityHint">Accessibility Hint</div>
-          <div class="doc-result-text" id="doc-hint"></div>
-        </div>
-
-        <div class="doc-result-block">
-          <div class="doc-result-label" data-i18n="docIntent">Document Intent</div>
-          <div class="doc-result-text" id="doc-intent"></div>
-        </div>
-
-        <div class="doc-result-block">
-          <div class="doc-result-label" data-i18n="extractedText">Extracted Text</div>
-          <button class="doc-extracted-toggle" id="doc-extracted-toggle" data-i18n="showRaw">Show raw text ▾</button>
-          <div class="doc-extracted-text" id="doc-extracted-text"></div>
-        </div>
-
-      </div>
-    </section>
-
-    <section class="section">
-      <div class="section-head">
-        <h2 class="section-title" data-i18n="pageSummary">Page Summary</h2>
-        <div class="section-meta" id="analysis-meta" data-i18n="waitingForScan">Waiting for scan</div>
-      </div>
-      <div class="summary-box" id="analysis-summary" data-i18n="analyzePlaceholder">Analyze a page with terms, sign-in, consent, or payment language to
-        populate this summary.</div>
-      <div class="tts-controls" id="tts-controls" style="display: none;">
-        <!-- tts-lang kept hidden so existing JS refs work; synced by global-lang -->
-        <select id="tts-lang" class="tts-select" style="display:none;" aria-hidden="true">
-          <option value="en-IN">Indian English</option>
-          <option value="hi-IN">Hindi</option>
-          <option value="mr-IN">Marathi</option>
-          <option value="ta-IN">Tamil</option>
-          <option value="te-IN">Telugu</option>
-          <option value="bn-IN">Bengali</option>
-          <option value="gu-IN">Gujarati</option>
-          <option value="kn-IN">Kannada</option>
-          <option value="ml-IN">Malayalam</option>
-          <option value="pa-IN">Punjabi</option>
-        </select>
-        <button id="tts-play-btn" class="secondary-btn tts-btn" data-i18n="listenBtn">Listen</button>
-        <audio id="tts-audio" style="display: none;"></audio>
-      </div>
-      <div class="chip-row" id="summary-points"></div>
-    </section>
-
-    <section class="section">
-      <div class="section-head">
-        <h2 class="section-title" data-i18n="siteReputation">Site Reputation</h2>
-        <div class="section-meta" id="analysis-intent" data-i18n="noSiteClassified">No site classified</div>
-      </div>
-      <div class="reputation-box" id="reputation-summary" data-i18n="reputationPlaceholder">Reputation details will appear here after a scan.</div>
-      <div class="list" id="reputation-examples"></div>
-    </section>
-
-    <section class="section" id="chat-section" style="display: none;">
-      <div class="section-head">
-        <h2 class="section-title" data-i18n="askDoc">Ask the Document</h2>
-        <div class="section-meta" id="chat-meta" data-i18n="aiAssistant">AI Assistant</div>
-      </div>
-      <div class="chat-window" id="chat-window">
-        <div class="chat-message chat-ai" data-i18n="chatWelcome">Ask me anything about this agreement. You can ask in English, Hindi, or any
-          supported Indian language!</div>
-      </div>
-      <div class="chat-input-row">
-        <!-- chat-lang kept hidden so existing JS refs work; synced by global-lang -->
-        <select id="chat-lang" class="tts-select" style="display:none;" aria-hidden="true">
-          <option value="en-IN">Eng (IN)</option>
-          <option value="hi-IN">Hindi</option>
-          <option value="mr-IN">Marathi</option>
-          <option value="ta-IN">Tamil</option>
-          <option value="te-IN">Telugu</option>
-          <option value="bn-IN">Bengali</option>
-          <option value="gu-IN">Gujarati</option>
-          <option value="kn-IN">Kannada</option>
-          <option value="ml-IN">Malayalam</option>
-          <option value="pa-IN">Punjabi</option>
-        </select>
-        <button id="chat-mic-btn" class="secondary-btn chat-mic-btn" type="button" title="Speak your question" aria-label="Speak your question">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-            <path d="M12 15.5A3.5 3.5 0 0 0 15.5 12V7A3.5 3.5 0 1 0 8.5 7v5a3.5 3.5 0 0 0 3.5 3.5Z" fill="currentColor" />
-            <path d="M6.5 11.5A5.5 5.5 0 0 0 17.5 11.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
-            <path d="M12 17v3.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
-            <path d="M9 20.5h6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
-          </svg>
-        </button>
-        <input type="text" id="chat-input" placeholder="Type your question..." data-i18n-placeholder="chatPlaceholder" autocomplete="off" />
-        <button id="chat-send-btn" class="primary-btn chat-send-btn">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-            <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" fill="currentColor" />
-          </svg>
-        </button>
-      </div>
-      </div>
-    </section>
-
-    <!-- ── Interactive Quiz ──────────────────────────────────────────── -->
-    <section class="section" id="quiz-section" style="display: none;">
-      <div class="section-head">
-        <h2 class="section-title" data-i18n="testKnowledge">Test Your Knowledge</h2>
-        <div class="section-meta" id="quiz-meta" data-i18n="quizMeta">Quiz</div>
-      </div>
-      <div class="chat-input-row" style="margin-top: 0; margin-bottom: 12px; justify-content: flex-end;">
-        <!-- quiz-lang kept hidden so existing JS refs work; synced by global-lang -->
-        <select id="quiz-lang" class="tts-select" style="display:none;" aria-hidden="true">
-          <option value="en-IN">Eng (IN)</option>
-          <option value="hi-IN">Hindi</option>
-          <option value="mr-IN">Marathi</option>
-          <option value="ta-IN">Tamil</option>
-          <option value="te-IN">Telugu</option>
-          <option value="bn-IN">Bengali</option>
-          <option value="gu-IN">Gujarati</option>
-          <option value="kn-IN">Kannada</option>
-          <option value="ml-IN">Malayalam</option>
-          <option value="pa-IN">Punjabi</option>
-        </select>
-        <button id="quiz-generate-btn" class="secondary-btn" style="flex: 1;" data-i18n="generateQuiz">Generate Quiz</button>
-      </div>
-      <div id="quiz-container" style="display: none; flex-direction: column; gap: 8px;">
-        <div class="chat-window" style="background: #fff; padding: 12px; font-weight: 500; font-size: 13.5px;" id="quiz-question-text">
-        </div>
-        <button id="quiz-opt-a" class="secondary-btn" style="text-align: left; height: auto; padding: 10px; font-weight: 400; line-height: 1.4; border: 1px solid #e2e8f0; white-space: normal;"></button>
-        <button id="quiz-opt-b" class="secondary-btn" style="text-align: left; height: auto; padding: 10px; font-weight: 400; line-height: 1.4; border: 1px solid #e2e8f0; white-space: normal;"></button>
-        <div id="quiz-explanation-box" style="display: none; padding: 10px; border-radius: 8px; background: #f8fafc; font-size: 12.5px; border-left: 3px solid #6366f1; margin-top: 4px; line-height: 1.4;">
-        </div>
-        <button id="quiz-next-btn" class="primary-btn" style="display: none; margin-top: 4px;" data-i18n="nextQuestion">Next Question</button>
-      </div>
-    </section>
-  </main>
+    <div class="sheet__actions">
+      <button class="btn btn--block" id="save-btn" type="button" data-i18n="saveProfile">Save</button>
+      <button class="btn--quiet" id="logout-btn" type="button" style="text-align:center; color:var(--risk-high)" data-i18n="logOut">Log out</button>
+    </div>
+  </aside>
 
   <script src="../config/config.js"></script>
   <script src="../config/i18n.js"></script>
   <script src="../shared/identity.js"></script>
+  <script src="state.js"></script>
+  <script src="api.js"></script>
   <script src="popup.js"></script>
 </body>
 

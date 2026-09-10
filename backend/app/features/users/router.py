@@ -6,7 +6,7 @@ All routes 503 when ``DATABASE_URL`` is not configured.
 
 from collections.abc import AsyncIterator
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db import db_enabled, session_scope
@@ -59,3 +59,12 @@ async def get_profile(
         analysis_count=await service.count_analyses(session, user.id),
         recent_analyses=await service.recent_analyses(session, user.id),
     )
+
+
+@users_router.delete("/{client_id}", status_code=204)
+async def delete_profile(
+    client_id: str,
+    session: AsyncSession = Depends(require_session),
+):
+    await service.delete_user(session, client_id)
+    return Response(status_code=204)

@@ -233,7 +233,7 @@ def build_dashboard_html(analysis_id: str) -> str:
   <title>ConsentWise AI Dashboard</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
     @property --gauge-angle {{
       syntax: "<angle>";
@@ -259,7 +259,7 @@ def build_dashboard_html(analysis_id: str) -> str:
     }}
     * {{ box-sizing: border-box; margin: 0; padding: 0; }}
     body {{
-      font-family: "Space Grotesk", "Segoe UI", Arial, sans-serif;
+      font-family: "Libre Baskerville", Baskerville, "Times New Roman", Georgia, serif;
       color: var(--text);
       background:
         radial-gradient(ellipse at top left,  rgba(99,102,241,0.07), transparent 45%),
@@ -811,10 +811,10 @@ def build_dashboard_html(analysis_id: str) -> str:
       if (chatLang) {{
         chatLang.addEventListener("change", () => {{
           if (chatLang.value === "hi-IN" || chatLang.value === "mr-IN") {{
-            document.body.style.fontFamily = "'Noto Sans Devanagari', 'Space Grotesk', sans-serif";
+            document.body.style.fontFamily = "'Noto Sans Devanagari', 'Libre Baskerville', Baskerville, serif";
             document.body.style.fontWeight = "500";
           }} else {{
-            document.body.style.fontFamily = "'Space Grotesk', sans-serif";
+            document.body.style.fontFamily = "'Libre Baskerville', Baskerville, 'Times New Roman', Georgia, serif";
             document.body.style.fontWeight = "400";
           }}
         }});

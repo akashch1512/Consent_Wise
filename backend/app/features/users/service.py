@@ -20,6 +20,15 @@ async def get_user(session: AsyncSession, client_id: str) -> User | None:
     return result.scalar_one_or_none()
 
 
+async def delete_user(session: AsyncSession, client_id: str) -> bool:
+    """Delete the user and their analysis history. Returns True if a row existed."""
+    user = await get_user(session, client_id)
+    if user is None:
+        return False
+    await session.delete(user)
+    return True
+
+
 async def upsert_user(session: AsyncSession, payload: UserUpsert) -> User:
     """Create the user or merge the provided (non-null) fields into an existing row."""
     user = await get_user(session, payload.client_id)

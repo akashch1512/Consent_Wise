@@ -71,6 +71,7 @@ async def dashboard_home(request: Request):
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>{config.product_name}</title>
+  <link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:wght@400;700&display=swap" rel="stylesheet">
   <style>
     body {{
       margin: 0;
@@ -79,7 +80,7 @@ async def dashboard_home(request: Request):
       place-items: center;
       background: #09111f;
       color: #eef4ff;
-      font-family: Arial, sans-serif;
+      font-family: "Libre Baskerville", Baskerville, "Times New Roman", Georgia, serif;
       text-align: center;
       padding: 24px;
     }}

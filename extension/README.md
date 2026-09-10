@@ -1,10 +1,10 @@
-# 🛡️ ConsentWise AI — Browser Extension
+# ConsentWise AI — Browser Extension
 
-Detects financial / consent / privacy language on a page, intercepts blind
-"I agree" clicks, and opens a readable safety analysis backed by the
-ConsentWise backend (FastAPI + OpenAI).
+Reviews consent, payment and privacy language on a page, offers a readable
+risk verdict, and — with your permission — sends the page text to the
+ConsentWise backend (FastAPI + OpenAI) for a deeper analysis.
 
-Works in Chrome and Edge (Manifest V3).
+Manifest V3 · Chrome / Edge · no build step.
 
 ---
 
@@ -13,92 +13,107 @@ Works in Chrome and Edge (Manifest V3).
 ```
 extension/
 ├── manifest.json
-├── README.md
+├── package.json              npm run check / i18n:build / i18n:check
+├── scripts/
+│   ├── build-i18n.mjs         rebuilds src/config/i18n.js from its translation table
+│   └── check-i18n.mjs         CI guard: every locale has every en-IN key
 └── src/
+    ├── assets/fonts/          self-hosted Libre Baskerville (SEC-9, no Google Fonts)
+    ├── styles/
+    │   ├── tokens.css         monochrome design tokens
+    │   └── popup.css          popup layout + components
     ├── config/
-    │   ├── config.js          single source of truth for backend URLs (globalThis.ConsentWise)
-    │   └── i18n.js             popup translations + tiny translation engine
+    │   ├── config.js          globalThis.ConsentWise — backend URLs + endpoints
+    │   └── i18n.js            globalThis.ConsentWiseI18n — 131 keys × 10 locales (generated)
     ├── shared/
-    │   └── identity.js         per-user client id + backend profile sync (globalThis.ConsentWiseIdentity)
+    │   └── identity.js        globalThis.ConsentWiseIdentity — per-install client id
     ├── background/
-    │   └── service-worker.js   opens the analysis tab, manages the offscreen doc
+    │   └── service-worker.js  opens the analysis tab (backend-origin only), offscreen doc
     ├── content/
-    │   ├── content.js          page scanning, click interception, overlay
-    │   └── overlay.css         styles injected into pages
+    │   ├── detect.js          globalThis.ConsentWiseDetect — consent/payment classifiers
+    │   ├── content.js         orchestration: scan, intercept, consent overlay
+    │   └── overlay.css        overlay styles injected into pages
     ├── offscreen/
     │   ├── offscreen.html
-    │   └── offscreen.js        records the mic for speech-to-text
-    ├── popup/
-    │   ├── popup.html
-    │   └── popup.js            toolbar UI: analysis, chat, quiz, TTS, doc upload, onboarding
-    └── demo/
-        ├── index.html          standalone image-analysis demo (not wired into the toolbar)
-        ├── demo.js
-        └── demo.css
+    │   └── offscreen.js       mic capture + real silence detection for speech-to-text
+    └── popup/
+        ├── popup.html         markup only
+        ├── state.js           globalThis.CWState — storage schema + helpers
+        ├── api.js             globalThis.CWApi — every fetch, 30s timeout + AbortSignal
+        └── popup.js           orchestrator: tabs, verdict, chat, quiz, upload, sheet
 ```
 
-### Load order per context
+### Script load order
 
-`config.js` runs first everywhere and publishes `globalThis.ConsentWise`
-(`BACKEND_URL`, `WEB_APP_URL`, `TRUSTED_ORIGINS`, `API.*`). `identity.js`
-(`globalThis.ConsentWiseIdentity`) runs next where a user id is needed.
+`config.js` → `i18n.js` → `identity.js` → `state.js` → `api.js` → `popup.js`
+(content script: `config.js` → `identity.js` → `detect.js` → `content.js`;
+service worker: `importScripts("../config/config.js")`).
 
-| Context | Wiring |
-|---|---|
-| content script | `manifest.json` → `"js": ["src/config/config.js", "src/shared/identity.js", "src/content/content.js"]` |
-| popup | `<script>` tags: `../config/config.js`, `../config/i18n.js`, `../shared/identity.js`, `popup.js` |
-| offscreen | `<script>` tags: `../config/config.js`, `offscreen.js` |
-| service worker | no backend calls — no imports |
-| popup → tab injection | `chrome.scripting.executeScript({ files: ["src/config/config.js", "src/shared/identity.js", "src/content/content.js"] })` |
-
-To target a deployed backend, change the two URLs at the top of
-`src/config/config.js` — nothing else.
+To target a deployed backend, change `BACKEND_URL` in `src/config/config.js`
+to an `https://` origin and update `host_permissions` in `manifest.json`.
 
 ---
 
-## Per-user data
+## The popup
 
-There is no login. On first run `identity.js` generates a random `clientId`
-(UUID) and stores it in `chrome.storage.local`. That id keys the user's data on
-the backend.
+Fixed 380 × 600 shell: the top bar and tab strip are pinned; one scroll region.
 
-- **Sent to the backend (durable, Postgres):**
-  - onboarding profile — name, email, interest chips, language — via `POST /api/users`
-  - every analysis — url, title, danger/reputation scores, summary — attached to
-    `/api/extension/analyze` and `/api/analyze-document` as `client_id`
-- **Kept in `chrome.storage.local` (convenience only):** `clientId`,
-  `hasSeenWelcome`, `globalLangCode`, `protectionEnabled`, the cached last
-  analysis, and a `userProfile` copy so the onboarding form re-populates
-  instantly.
+| Tab | Contents |
+|---|---|
+| **Scan** | verdict card (risk word + score bar + direction), one primary action, a 3-line summary with *Show more*, and collapsible **What we found / Site reputation / Login safety** accordions. "Open full report" links to the backend dashboard. |
+| **Chat** | ask about the analyzed text; the composer is pinned to the bottom. Locked until an analysis exists. |
+| **Quiz** | short comprehension check with a progress bar. Locked until an analysis exists. |
+| **Document** | drop an image / PDF for OCR + analysis; results also unlock Chat and Quiz. |
 
-Backend persistence is optional — if the backend has no `DATABASE_URL`, the
-sync calls fail quietly and the extension still works.
+The avatar (top-right) opens **Profile & Settings**: name / email / interests,
+language, the **Protection** switch, usage stats, and a **Your data** section
+(device ID + reset, download, delete).
+
+Colour is used only to encode risk (`--risk-high/mid/low`) and always alongside
+a word — never colour alone.
+
+---
+
+## Privacy model
+
+There is no account. Each install gets a random `clientId` (UUID in
+`chrome.storage.local`) that keys the user's data on the backend.
+
+- **Sent to the backend when you analyze:** page text, title and URL, plus
+  `client_id`. The interception overlay states this and asks before sending;
+  "Don't ask again on this site" is remembered per origin.
+- **Kept only in `chrome.storage.local`:** `clientId`, `hasSeenWelcome`,
+  `protectionEnabled`, `globalLangCode`, the cached last analysis, `userProfile`,
+  usage counters, and per-site skip list.
+- **Protection switch** is real: `content.js` reads `protectionEnabled` before
+  arming any interceptor and reacts to `chrome.storage.onChanged` live.
+
+Backend persistence is optional — with no `DATABASE_URL` the `/api/users` calls
+fail quietly and everything else works.
 
 ---
 
 ## Setup
 
 1. Start the backend (`../backend/README.md`) at `http://localhost:8000`.
-2. Open `chrome://extensions` (or `edge://extensions`).
-3. Enable **Developer mode** → **Load unpacked** → select this `extension/` folder.
+2. `chrome://extensions` → **Developer mode** → **Load unpacked** → this folder.
+
+## Development
+
+```
+npm run check        # i18n parity + syntax check on every script
+npm run i18n:build   # regenerate src/config/i18n.js after editing scripts/build-i18n.mjs
+```
+
+No bundler: the module split is for humans. Scripts share state through a few
+`globalThis.*` namespaces, loaded in a fixed order.
 
 ---
 
-## How it works
+## Known follow-ups (see docs/UI_REVAMP_PLAN.md)
 
-| Step | What happens |
-|------|--------------|
-| 1 | `content.js` scans for agreement checkboxes / consent buttons; a `MutationObserver` catches ones added later |
-| 2 | A matching click is intercepted (capture-phase `preventDefault`) and the element is highlighted |
-| 3 | An overlay explains what was caught |
-| 4 | On "Analyze & Continue Safely", page text + `client_id` → `POST /api/extension/analyze` |
-| 5 | `service-worker.js` opens (or reuses) a tab on the backend `/dashboard/{id}` report |
-
-The popup runs the same analysis for the current tab, plus a document/image
-uploader, grounded chat, a comprehension quiz, and text-to-speech.
-
----
-
-## Debugging
-
-Filter the page console by `[ConsentWise`.
+- Ship an `https://` backend and a build-time environment switch (SEC-8).
+- Narrow `<all_urls>` to `activeTab` + optional host permissions — this removes
+  passive interception, so it is a product decision, not just a refactor (SEC-10).
+- Machine-free translations for the ~20 English-only transient strings listed in
+  `scripts/build-i18n.mjs` (`EN_ONLY`).

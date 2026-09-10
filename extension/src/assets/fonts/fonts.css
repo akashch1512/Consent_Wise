@@ -1,0 +1,16 @@
+/* Self-hosted (SEC-9: no third-party font request). Only the reading serif
+   is bundled; the UI uses the system font. Bold is synthesised from Regular. */
+@font-face {
+  font-family: "Libre Baskerville";
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url("./LibreBaskerville-Regular.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Libre Baskerville";
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: url("./LibreBaskerville-Italic.woff2") format("woff2");
+}

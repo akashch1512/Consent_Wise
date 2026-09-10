@@ -14,8 +14,16 @@ let audioChunks = [];
 let stream = null;
 let isListening = false;
 let currentLang = "en-IN";
-let silenceTimer = null;
-const SILENCE_TIMEOUT_MS = 5000; // auto-stop after 5s of silence
+
+// Real silence detection (BUG-5): stop after a pause in speech, not a hard cap.
+let audioCtx = null;
+let analyser = null;
+let silenceRAF = null;
+let lastVoiceAt = 0;
+let recordingStartedAt = 0;
+const SILENCE_HANG_MS = 1600; // stop this long after the last voiced frame
+const MAX_RECORDING_MS = 30000; // absolute ceiling
+const VOICE_RMS_THRESHOLD = 0.012;
 
 function sendToPopup(payload) {
   chrome.runtime.sendMessage({ target: "popup", ...payload });
@@ -58,13 +66,14 @@ async function startRecognition(lang) {
 
   mediaRecorder.onstart = () => {
     isListening = true;
+    recordingStartedAt = performance.now();
+    lastVoiceAt = recordingStartedAt;
     sendToPopup({ type: "stt-started" });
-    // Auto-stop after silence timeout so the user doesn't have to
-    resetSilenceTimer();
+    startSilenceWatch(stream);
   };
 
   mediaRecorder.onstop = async () => {
-    clearSilenceTimer();
+    stopSilenceWatch();
     isListening = false;
 
     if (stream) {
@@ -129,7 +138,7 @@ async function startRecognition(lang) {
 }
 
 function stopRecognition() {
-  clearSilenceTimer();
+  stopSilenceWatch();
   if (mediaRecorder && isListening) {
     try {
       mediaRecorder.stop();
@@ -142,18 +151,51 @@ function stopRecognition() {
   }
 }
 
-function resetSilenceTimer() {
-  clearSilenceTimer();
-  silenceTimer = setTimeout(() => {
-    if (isListening) stopRecognition();
-  }, SILENCE_TIMEOUT_MS);
+function startSilenceWatch(mediaStream) {
+  try {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const src = audioCtx.createMediaStreamSource(mediaStream);
+    analyser = audioCtx.createAnalyser();
+    analyser.fftSize = 512;
+    src.connect(analyser);
+  } catch {
+    // Web Audio unavailable — fall back to the max ceiling only.
+    analyser = null;
+  }
+  const buf = analyser ? new Float32Array(analyser.fftSize) : null;
+
+  const tick = () => {
+    if (!isListening) return;
+    const now = performance.now();
+
+    if (analyser) {
+      analyser.getFloatTimeDomainData(buf);
+      let sum = 0;
+      for (let i = 0; i < buf.length; i++) sum += buf[i] * buf[i];
+      const rms = Math.sqrt(sum / buf.length);
+      if (rms > VOICE_RMS_THRESHOLD) lastVoiceAt = now;
+      if (now - lastVoiceAt > SILENCE_HANG_MS && now - recordingStartedAt > 700) {
+        stopRecognition();
+        return;
+      }
+    }
+    if (now - recordingStartedAt > MAX_RECORDING_MS) {
+      stopRecognition();
+      return;
+    }
+    silenceRAF = requestAnimationFrame(tick);
+  };
+  silenceRAF = requestAnimationFrame(tick);
 }
 
-function clearSilenceTimer() {
-  if (silenceTimer) {
-    clearTimeout(silenceTimer);
-    silenceTimer = null;
+function stopSilenceWatch() {
+  if (silenceRAF) cancelAnimationFrame(silenceRAF);
+  silenceRAF = null;
+  if (audioCtx) {
+    audioCtx.close().catch(() => {});
+    audioCtx = null;
   }
+  analyser = null;
 }
 
 function blobToBase64(blob) {
@@ -169,8 +211,9 @@ function blobToBase64(blob) {
   });
 }
 
-// Listen for commands from background.js (relayed from popup)
-chrome.runtime.onMessage.addListener((message) => {
+// Listen for commands from the service worker (relayed from popup)
+chrome.runtime.onMessage.addListener((message, sender) => {
+  if (!sender || sender.id !== chrome.runtime.id) return;
   if (message.target !== "offscreen") return;
 
   if (message.type === "stt-start") {

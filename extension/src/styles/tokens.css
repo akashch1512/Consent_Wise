@@ -1,0 +1,43 @@
+/**
+ * ConsentWise AI — design tokens
+ * Monochrome. Colour appears only to encode risk, never decoratively.
+ */
+:root {
+  /* Surface */
+  --bg: #ffffff;
+  --surface: #ffffff;
+  --surface-sunken: #fafafa;
+
+  /* Line */
+  --line: #e7e7e7;
+  --line-strong: #d0d0d0;
+
+  /* Ink */
+  --ink: #0a0a0a;
+  --ink-2: #575757;
+  --ink-3: #8e8e8e;
+
+  /* Risk — the only colour in the product */
+  --risk-high: #b42318;
+  --risk-mid: #b54708;
+  --risk-low: #067647;
+  --risk-high-bg: #fef3f2;
+  --risk-mid-bg: #fffaeb;
+  --risk-low-bg: #ecfdf3;
+
+  --focus: #0a0a0a;
+
+  /* Geometry */
+  --r-sm: 6px;
+  --r-md: 10px;
+  --r-lg: 14px;
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 24px;
+
+  /* Type */
+  --font-ui: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-read: "Libre Baskerville", Georgia, "Times New Roman", serif;
+}

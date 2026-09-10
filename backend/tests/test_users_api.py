@@ -81,6 +81,19 @@ def test_analyze_with_client_id_writes_history(client, new_client_id, monkeypatc
     assert event["danger_score"] == 70
 
 
+def test_delete_removes_profile_and_history(client, new_client_id):
+    client.post("/api/users", json={"client_id": new_client_id, "name": "Dev"})
+    assert client.get(f"/api/users/{new_client_id}").status_code == 200
+
+    resp = client.delete(f"/api/users/{new_client_id}")
+    assert resp.status_code == 204
+    assert client.get(f"/api/users/{new_client_id}").status_code == 404
+
+
+def test_delete_unknown_client_is_noop(client):
+    assert client.delete("/api/users/never-existed").status_code == 204
+
+
 def test_routes_503_when_db_disabled(client, monkeypatch):
     monkeypatch.setattr(users_router, "db_enabled", lambda: False)
     resp = client.post("/api/users", json={"client_id": "whatever-id"})

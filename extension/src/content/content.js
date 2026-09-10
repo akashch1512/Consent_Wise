@@ -1,433 +1,320 @@
 /**
- * ConsentWise AI — content.js
+ * ConsentWise AI — content script (orchestration)
  * ─────────────────────────────────────────────────────────────────────────────
- * Injected into every page. Responsible for:
- *   1. Detecting financial-consent checkboxes and intercepting them
- *   2. Detecting consent/payment buttons and intercepting their clicks
- *   3. Showing a premium animated overlay
- *   4. Extracting page content and forwarding it to the web app
+ * Runs on every page. Watches for genuine consent / payment actions, and — only
+ * when Protection is on — interrupts them with an overlay that asks the user
+ * whether to send the page text for analysis.
+ *
+ * Detection rules live in detect.js. Backend wiring in config.js.
  * ─────────────────────────────────────────────────────────────────────────────
  */
-
 (function () {
   "use strict";
 
-  // ─── Config (backend wiring comes from config.js, injected first) ──────────
-  const WEB_APP_URL = ConsentWise.WEB_APP_URL;
-  const BACKEND_ANALYZE_URL = ConsentWise.API.analyze;
-  const BACKEND_DASHBOARD_URL = ConsentWise.API.dashboard;
-  const MAX_CONTENT_LENGTH = 5000;
-  const POLICY_KEYWORDS = ["terms", "privacy", "conditions", "consent", "authorize", "authorization", "policy"];
-  const EXCLUDED_ORIGINS = new Set(ConsentWise.TRUSTED_ORIGINS);
-
-  /** Keywords that flag a button as a consent / payment trigger */
-  const BUTTON_KEYWORDS = ["agree", "pay", "proceed", "continue", "accept", "confirm", "subscribe", "buy now"];
-
-  /** Keywords that flag nearby label/text as agreement-related */
-  const AGREEMENT_KEYWORDS = ["agree", "terms", "conditions", "consent", "authorize", "policy", "accept"];
-
-  // ─── Guard: run only once ──────────────────────────────────────────────────
   if (window.__ConsentWiseInitialized) return;
   window.__ConsentWiseInitialized = true;
 
-  console.log("[ConsentWise AI] 🛡️  Initialised on:", window.location.href);
+  const { WEB_APP_URL, API, TRUSTED_ORIGINS } = ConsentWise;
+  const { classifyButton, isAgreementCheckbox } = ConsentWiseDetect;
 
-  if (EXCLUDED_ORIGINS.has(window.location.origin)) {
-    console.log("[ConsentWise AI] ↩️  Skipping interception on trusted app origin:", window.location.origin);
-    return;
+  const MAX_CONTENT_LENGTH = 5000;
+  const FETCH_TIMEOUT_MS = 30000;
+  const EXTENSION_ID = chrome.runtime.id;
+  const ORIGIN = location.origin;
+
+  if (TRUSTED_ORIGINS.includes(ORIGIN)) return;
+
+  let protectionEnabled = true;
+  let scanScheduled = 0;
+  const restyled = new WeakMap(); // el -> { outline, boxShadow, transition } to restore
+
+  // ── Protection state (SEC-3: the toggle is now real) ──────────────────────
+  chrome.storage.local.get(["protectionEnabled"], (data) => {
+    protectionEnabled = data.protectionEnabled !== false;
+  });
+  chrome.storage.onChanged.addListener((changes, area) => {
+    if (area === "local" && changes.protectionEnabled) {
+      protectionEnabled = changes.protectionEnabled.newValue !== false;
+    }
+  });
+
+  function skipThisSite() {
+    return new Promise((resolve) => {
+      chrome.storage.local.get(["consentWiseSkipOrigins"], (d) => {
+        resolve(Array.isArray(d.consentWiseSkipOrigins) && d.consentWiseSkipOrigins.includes(ORIGIN));
+      });
+    });
+  }
+  function rememberSkipThisSite() {
+    chrome.storage.local.get(["consentWiseSkipOrigins"], (d) => {
+      const list = new Set(Array.isArray(d.consentWiseSkipOrigins) ? d.consentWiseSkipOrigins : []);
+      list.add(ORIGIN);
+      chrome.storage.local.set({ consentWiseSkipOrigins: [...list] });
+    });
   }
 
-  // ─── Utility: extract & truncate page text ─────────────────────────────────
-  function extractPageContent() {
-    const raw = document.body ? document.body.innerText : "";
-    return raw.slice(0, MAX_CONTENT_LENGTH).trim();
-  }
-
-  function extractPolicyContent() {
+  // ── Page text extraction (single implementation — MNT-7) ──────────────────
+  function extractPolicyText() {
     const seen = new Set();
     const chunks = [];
-    const selector = [
-      "main",
-      "article",
-      "section",
-      "form",
-      "dialog",
-      "[role='dialog']",
-      ".terms",
-      ".privacy",
-      ".policy",
-      "#terms",
-      "#privacy",
-      "#policy",
-    ].join(", ");
+    const KEYWORDS = ["terms", "privacy", "conditions", "consent", "authorize", "authorization", "policy"];
+    const selector = "main,article,section,form,dialog,[role='dialog'],.terms,.privacy,.policy,#terms,#privacy,#policy";
 
     document.querySelectorAll(selector).forEach((node) => {
       const text = (node.innerText || "").trim();
-      const lowerText = text.toLowerCase();
-      if (!text || text.length < 120) return;
-      if (!POLICY_KEYWORDS.some((keyword) => lowerText.includes(keyword))) return;
+      if (text.length < 120) return;
+      const lower = text.toLowerCase();
+      if (!KEYWORDS.some((k) => lower.includes(k))) return;
       if (seen.has(text)) return;
       seen.add(text);
       chunks.push(text);
     });
 
-    if (!chunks.length) {
-      const pageText = extractPageContent();
-      return pageText.slice(0, MAX_CONTENT_LENGTH);
-    }
-
-    return chunks.join("\n\n").slice(0, MAX_CONTENT_LENGTH);
+    const body = chunks.length
+      ? chunks.join("\n\n")
+      : (document.body ? document.body.innerText : "");
+    return body.slice(0, MAX_CONTENT_LENGTH).trim();
   }
 
-  function openAnalysisTab(targetURL) {
-    chrome.runtime.sendMessage(
-      { action: "openTab", url: targetURL },
-      (response) => {
-        if (chrome.runtime.lastError) {
-          console.warn("[ConsentWise AI] Runtime error:", chrome.runtime.lastError.message);
-          window.open(targetURL, "_blank");
-        } else {
-          console.log("[ConsentWise AI] ✅ Tab opened via background:", response);
-        }
-      }
-    );
+  function fetchWithTimeout(url, options) {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), FETCH_TIMEOUT_MS);
+    return fetch(url, { ...options, signal: ctrl.signal }).finally(() => clearTimeout(timer));
   }
 
-  function bumpStorageCounter(key) {
-    chrome.storage.local.get([key], (data) => {
-      const nextValue = (data && typeof data[key] === "number" ? data[key] : 0) + 1;
-      chrome.storage.local.set({ [key]: nextValue });
+  function bumpCounter(key) {
+    chrome.storage.local.get([key], (d) => {
+      chrome.storage.local.set({ [key]: (typeof d[key] === "number" ? d[key] : 0) + 1 });
     });
   }
 
-  // ─── Utility: create backend report and open dashboard ─────────────────────
-  async function redirectToWebApp(extractedText) {
-    const fallbackTargetURL = BACKEND_DASHBOARD_URL;
+  function openAnalysisTab(url) {
+    chrome.runtime.sendMessage({ action: "openTab", url }, (res) => {
+      if (chrome.runtime.lastError && !(res && res.success)) {
+        // Background could not open it — as a last resort open here.
+        window.open(url, "_blank", "noopener");
+      }
+    });
+  }
 
+  async function sendForAnalysis() {
+    const text = extractPolicyText();
     try {
       const clientId = await ConsentWiseIdentity.getClientId().catch(() => null);
-      const response = await fetch(BACKEND_ANALYZE_URL, {
+      const response = await fetchWithTimeout(API.analyze, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          text: extractedText,
+          text,
           title: document.title || "",
-          url: window.location.href,
+          url: location.href,
           source: "intercept-flow",
           client_id: clientId,
         }),
       });
-
       const data = await response.json().catch(() => ({}));
       if (!response.ok || !data.dashboard_url) {
-        throw new Error(data.detail || "Backend dashboard URL was not returned.");
+        throw new Error(data.detail || "No dashboard URL returned.");
       }
-
-      console.log("[ConsentWise AI] 🔀 Redirecting to backend dashboard:", data.dashboard_url);
-      bumpStorageCounter("tabsOpened");
+      bumpCounter("tabsOpened");
       openAnalysisTab(data.dashboard_url);
       return;
-    } catch (error) {
-      console.warn("[ConsentWise AI] Backend analysis failed, opening fallback app:", error.message);
+    } catch (err) {
+      console.warn("[ConsentWise] Analysis failed:", err && err.message);
     }
-
-    openAnalysisTab(fallbackTargetURL || WEB_APP_URL);
+    openAnalysisTab(API.dashboard || WEB_APP_URL);
   }
 
-  // ─── Overlay ───────────────────────────────────────────────────────────────
-  function showOverlay(callback) {
-    // Remove any stale overlay
-    const stale = document.getElementById("cg-overlay");
-    if (stale) stale.remove();
+  // ── Highlight (BUG-4: restore host-page styles on close) ──────────────────
+  const highlighted = [];
+  function highlight(el) {
+    if (!restyled.has(el)) {
+      restyled.set(el, {
+        outline: el.style.outline,
+        boxShadow: el.style.boxShadow,
+        transition: el.style.transition,
+      });
+    }
+    el.style.transition = "box-shadow .2s ease, outline .2s ease";
+    el.style.outline = "2px solid #b42318";
+    el.style.boxShadow = "0 0 0 3px rgba(180,35,24,.18)";
+    highlighted.push(el);
+  }
+  function clearHighlights() {
+    highlighted.forEach((el) => {
+      const prev = restyled.get(el);
+      if (!prev) return;
+      el.style.outline = prev.outline;
+      el.style.boxShadow = prev.boxShadow;
+      el.style.transition = prev.transition;
+    });
+    highlighted.length = 0;
+  }
 
-    // Build overlay shell
+  // ── Overlay (SEC-1/SEC-2: honest, explicit consent) ──────────────────────
+  function buildOverlay({ onConfirm }) {
     const overlay = document.createElement("div");
-    overlay.id = "cg-overlay";
+    overlay.id = "cw-overlay";
     overlay.setAttribute("role", "dialog");
     overlay.setAttribute("aria-modal", "true");
-    overlay.setAttribute("aria-label", "ConsentWise AI — financial consent intercepted");
+    overlay.setAttribute("aria-labelledby", "cw-title");
 
-    overlay.innerHTML = `
-      <div id="cg-card">
+    const card = document.createElement("div");
+    card.id = "cw-card";
 
-        <!-- Header row -->
-        <div id="cg-header">
-          <div id="cg-logo">
-            <svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M14 2L3 7V14C3 19.55 7.84 24.74 14 26C20.16 24.74 25 19.55 25 14V7L14 2Z"
-                    fill="url(#shieldGrad)" stroke="rgba(255,255,255,0.3)" stroke-width="0.5"/>
-              <path d="M10 14l2.5 2.5L18 11" stroke="white" stroke-width="2"
-                    stroke-linecap="round" stroke-linejoin="round"/>
-              <defs>
-                <linearGradient id="shieldGrad" x1="3" y1="2" x2="25" y2="26" gradientUnits="userSpaceOnUse">
-                  <stop offset="0%" stop-color="#6C63FF"/>
-                  <stop offset="100%" stop-color="#3B82F6"/>
-                </linearGradient>
-              </defs>
-            </svg>
-          </div>
-          <span id="cg-brand">ConsentWise <span class="cg-ai">AI</span></span>
-          <button id="cg-close" aria-label="Dismiss">&times;</button>
-        </div>
+    const h = document.createElement("h2");
+    h.id = "cw-title";
+    h.textContent = "Review before you agree";
 
-        <!-- Spinner -->
-        <div id="cg-spinner-wrap">
-          <div id="cg-spinner"></div>
-          <div id="cg-pulse-ring"></div>
-        </div>
+    const p = document.createElement("p");
+    p.id = "cw-body";
+    p.textContent =
+      "This looks like a consent or payment action. ConsentWise can read the visible " +
+      "text on this page and send it to the ConsentWise backend, where an AI model " +
+      "summarises the risks. The page text and address are sent for this check; nothing " +
+      "is stored on this site.";
 
-        <!-- Text content -->
-        <h2 id="cg-title">Analyzing Financial Agreement</h2>
-        <p id="cg-message">
-          We've intercepted a consent action and are extracting the relevant
-          terms before you proceed.
-        </p>
-        <p id="cg-sub">Ensuring informed &amp; safe consent</p>
+    const actions = document.createElement("div");
+    actions.id = "cw-actions";
 
-        <!-- Stepper -->
-        <div id="cg-steps">
-          <div class="cg-step active" id="cg-step-1">
-            <span class="cg-step-dot"></span>
-            <span class="cg-step-label">Detected</span>
-          </div>
-          <div class="cg-step-line"></div>
-          <div class="cg-step" id="cg-step-2">
-            <span class="cg-step-dot"></span>
-            <span class="cg-step-label">Extracting</span>
-          </div>
-          <div class="cg-step-line"></div>
-          <div class="cg-step" id="cg-step-3">
-            <span class="cg-step-dot"></span>
-            <span class="cg-step-label">Redirecting</span>
-          </div>
-        </div>
+    const confirm = document.createElement("button");
+    confirm.id = "cw-confirm";
+    confirm.className = "cw-btn cw-btn-primary";
+    confirm.textContent = "Send page text for analysis";
 
-        <!-- Action buttons -->
-        <div id="cg-actions">
-          <button id="cg-btn-proceed" class="cg-btn cg-btn-primary">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"
-                    fill="currentColor" opacity="0.9"/>
-            </svg>
-            Analyze &amp; Continue Safely
-          </button>
-          <button id="cg-btn-cancel" class="cg-btn cg-btn-ghost">
-            Cancel &amp; Stay Here
-          </button>
-        </div>
+    const cancel = document.createElement("button");
+    cancel.id = "cw-cancel";
+    cancel.className = "cw-btn cw-btn-ghost";
+    cancel.textContent = "Not now";
 
-        <!-- Disclaimer -->
-        <p id="cg-disclaimer">
-          Your data is processed locally. Nothing is sent to external servers.
-        </p>
-      </div>
-    `;
+    const skipRow = document.createElement("label");
+    skipRow.id = "cw-skip";
+    const skipBox = document.createElement("input");
+    skipBox.type = "checkbox";
+    skipBox.id = "cw-skip-box";
+    const skipText = document.createElement("span");
+    skipText.textContent = "Don't ask again on this site";
+    skipRow.append(skipBox, skipText);
+
+    actions.append(confirm, cancel);
+    card.append(h, p, actions, skipRow);
+    overlay.append(card);
+
+    function close() {
+      overlay.classList.add("cw-out");
+      setTimeout(() => overlay.remove(), 180);
+      document.removeEventListener("keydown", onKey);
+      clearHighlights();
+    }
+    function onKey(e) {
+      if (e.key === "Escape") close();
+    }
+
+    confirm.addEventListener("click", () => {
+      if (skipBox.checked) rememberSkipThisSite();
+      close();
+      onConfirm();
+    });
+    cancel.addEventListener("click", () => {
+      if (skipBox.checked) rememberSkipThisSite();
+      close();
+    });
+    overlay.addEventListener("click", (e) => {
+      if (e.target === overlay) close();
+    });
+    document.addEventListener("keydown", onKey);
 
     document.body.appendChild(overlay);
-
-    // Animate steps after small delays
-    setTimeout(() => activateStep("cg-step-2"), 800);
-    setTimeout(() => activateStep("cg-step-3"), 1600);
-
-    // Wire up buttons
-    document.getElementById("cg-btn-proceed").addEventListener("click", () => {
-      removeOverlay();
-      if (typeof callback === "function") callback();
-    });
-
-    document.getElementById("cg-btn-cancel").addEventListener("click", () => {
-      removeOverlay();
-      console.log("[ConsentWise AI] User cancelled — no redirect.");
-    });
-
-    document.getElementById("cg-close").addEventListener("click", () => {
-      removeOverlay();
-    });
-
-    // Close on backdrop click
-    overlay.addEventListener("click", (e) => {
-      if (e.target === overlay) removeOverlay();
-    });
-
-    // Keyboard close
-    document.addEventListener("keydown", handleEscKey);
+    confirm.focus();
   }
 
-  function activateStep(id) {
-    const el = document.getElementById(id);
-    if (el) el.classList.add("active");
+  async function intercept(el) {
+    if (!protectionEnabled) return;
+    if (await skipThisSite()) return;
+    highlight(el);
+    bumpCounter("interceptCount");
+    buildOverlay({ onConfirm: sendForAnalysis });
   }
 
-  function removeOverlay() {
-    const overlay = document.getElementById("cg-overlay");
-    if (!overlay) return;
-    overlay.classList.add("cg-fade-out");
-    setTimeout(() => overlay.remove(), 400);
-    document.removeEventListener("keydown", handleEscKey);
-  }
+  // ── Wiring interceptors ──────────────────────────────────────────────────
+  const WIRED = "__cwWired";
 
-  function handleEscKey(e) {
-    if (e.key === "Escape") removeOverlay();
-  }
-
-  // ─── Highlight helper ──────────────────────────────────────────────────────
-  function highlightElement(el) {
-    el.style.transition = "box-shadow 0.3s ease, outline 0.3s ease";
-    el.style.outline = "2.5px solid #EF4444";
-    el.style.boxShadow = "0 0 0 4px rgba(239,68,68,0.25)";
-    console.log("[ConsentWise AI] 🔴 Element highlighted:", el.tagName, el.textContent.slice(0, 40));
-  }
-
-  // ─── Check if checkbox is agreement-related ────────────────────────────────
-  function isAgreementCheckbox(checkbox) {
-    // Look at: label, aria-label, adjacent siblings, parent text (up to 3 levels)
-    const sources = [
-      checkbox.getAttribute("aria-label") || "",
-      checkbox.id ? (document.querySelector(`label[for="${checkbox.id}"]`) || {}).textContent || "" : "",
-      checkbox.closest("label") ? checkbox.closest("label").textContent : "",
-      checkbox.parentElement ? checkbox.parentElement.innerText : "",
-      checkbox.parentElement && checkbox.parentElement.parentElement
-        ? checkbox.parentElement.parentElement.innerText
-        : "",
-    ];
-
-    const combined = sources.join(" ").toLowerCase();
-    const matched = AGREEMENT_KEYWORDS.some((kw) => combined.includes(kw));
-
-    if (matched) {
-      console.log("[ConsentWise AI] ☑️  Agreement checkbox detected. Context:", combined.slice(0, 80));
-    }
-    return matched;
-  }
-
-  // ─── Check if button is a consent/payment trigger ─────────────────────────
-  function isConsentButton(btn) {
-    const text = (btn.innerText || btn.value || btn.getAttribute("aria-label") || "").toLowerCase().trim();
-    const matched = BUTTON_KEYWORDS.some((kw) => text.includes(kw));
-    if (matched) {
-      console.log("[ConsentWise AI] 🔘 Consent button detected:", text.slice(0, 60));
-    }
-    return matched;
-  }
-
-  // ─── Intercept: checkbox ──────────────────────────────────────────────────
-  function attachCheckboxListener(checkbox) {
-    if (checkbox.__cgListening) return;
-    checkbox.__cgListening = true;
-
-    checkbox.addEventListener("change", function (e) {
-      if (!checkbox.checked) return; // Only intercept when user checks it
-
-      // Immediately uncheck
+  function wireCheckbox(cb) {
+    if (cb[WIRED] || !isAgreementCheckbox(cb)) return;
+    cb[WIRED] = true;
+    cb.addEventListener("change", function (e) {
+      if (!cb.checked || !protectionEnabled) return;
       e.preventDefault();
-      checkbox.checked = false;
-      highlightElement(checkbox);
-
-      console.log("[ConsentWise AI] 🚫 Checkbox intercept fired.");
-      bumpStorageCounter("interceptCount");
-
-      showOverlay(() => {
-        const content = extractPageContent();
-        redirectToWebApp(content);
-      });
+      cb.checked = false;
+      intercept(cb);
     });
   }
 
-  // ─── Intercept: button ────────────────────────────────────────────────────
-  function attachButtonListener(btn) {
-    if (btn.__cgListening) return;
-    btn.__cgListening = true;
-
+  function wireButton(btn) {
+    if (btn[WIRED]) return;
+    const kind = classifyButton(btn);
+    if (!kind) return;
+    btn[WIRED] = true;
     btn.addEventListener(
       "click",
       function (e) {
+        if (!protectionEnabled) return;
         e.preventDefault();
         e.stopImmediatePropagation();
-        highlightElement(btn);
-
-        console.log("[ConsentWise AI] 🚫 Button intercept fired:", btn.innerText.slice(0, 40));
-        bumpStorageCounter("interceptCount");
-
-        showOverlay(() => {
-          const content = extractPageContent();
-          redirectToWebApp(content);
-        });
+        intercept(btn);
       },
-      true // Capture phase — fires before any existing handlers
+      true
     );
   }
 
-  // ─── DOM Scanner ──────────────────────────────────────────────────────────
-  function scanDOM() {
-    // Scan checkboxes
-    document.querySelectorAll('input[type="checkbox"]').forEach((cb) => {
-      if (isAgreementCheckbox(cb)) attachCheckboxListener(cb);
-    });
-
-    // Scan buttons & <a> tags acting as buttons
-    const candidates = document.querySelectorAll('button, input[type="submit"], input[type="button"], a[role="button"], [role="button"]');
-    candidates.forEach((btn) => {
-      if (isConsentButton(btn)) attachButtonListener(btn);
-    });
+  function scan(rootNode) {
+    const scope = rootNode && rootNode.querySelectorAll ? rootNode : document;
+    scope.querySelectorAll('input[type="checkbox"]').forEach(wireCheckbox);
+    scope
+      .querySelectorAll('button, input[type="submit"], input[type="button"], a[role="button"], [role="button"]')
+      .forEach(wireButton);
   }
 
-  // ─── MutationObserver: watch for dynamically injected elements ────────────
+  function scheduleScan(node) {
+    if (scanScheduled) return;
+    scanScheduled = requestIdleCallback
+      ? requestIdleCallback(() => { scanScheduled = 0; scan(node); }, { timeout: 400 })
+      : setTimeout(() => { scanScheduled = 0; scan(node); }, 250);
+  }
+
   const observer = new MutationObserver((mutations) => {
-    for (const mutation of mutations) {
-      for (const node of mutation.addedNodes) {
-        if (node.nodeType !== Node.ELEMENT_NODE) continue;
-
-        // Check the node itself
-        if (node.matches && node.matches('input[type="checkbox"]') && isAgreementCheckbox(node)) {
-          attachCheckboxListener(node);
-        }
-        if (node.matches && node.matches('button, input[type="submit"]') && isConsentButton(node)) {
-          attachButtonListener(node);
-        }
-
-        // Check descendants
-        node.querySelectorAll && node.querySelectorAll('input[type="checkbox"]').forEach((cb) => {
-          if (isAgreementCheckbox(cb)) attachCheckboxListener(cb);
-        });
-        node.querySelectorAll && node.querySelectorAll('button, input[type="submit"], input[type="button"]').forEach((btn) => {
-          if (isConsentButton(btn)) attachButtonListener(btn);
-        });
-      }
+    for (const m of mutations) {
+      if (m.addedNodes && m.addedNodes.length) { scheduleScan(document); break; }
     }
   });
 
-  observer.observe(document.body || document.documentElement, {
-    childList: true,
-    subtree: true,
-  });
-
+  // ── Messages (SEC-5: only our own extension) ──────────────────────────────
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    if (!sender || sender.id !== EXTENSION_ID) return;
     if (message.action === "ping") {
       sendResponse({ status: "alive" });
       return false;
     }
-
     if (message.action === "getPolicyText") {
-      sendResponse({
-        text: extractPolicyContent(),
-        url: window.location.href,
-        title: document.title || "",
-      });
+      sendResponse({ text: extractPolicyText(), url: location.href, title: document.title || "" });
       return false;
     }
+    return false;
   });
 
-  // ─── Initial scan ─────────────────────────────────────────────────────────
-  // Wait for DOM to settle, then scan
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", scanDOM);
-  } else {
-    scanDOM();
+  function start() {
+    scan(document);
+    observer.observe(document.body || document.documentElement, { childList: true, subtree: true });
+    // Two follow-up scans catch late SPA renders without a permanent observer cost.
+    setTimeout(() => scan(document), 1500);
+    setTimeout(() => scan(document), 4000);
   }
 
-  // Re-scan after a short delay to catch late-rendered SPA content
-  setTimeout(scanDOM, 1500);
-  setTimeout(scanDOM, 4000);
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", start, { once: true });
+  } else {
+    start();
+  }
 
-  console.log("[ConsentWise AI] 👁️  Observer active. Watching for consent elements…");
+  window.addEventListener("pagehide", () => observer.disconnect(), { once: true });
 })();

@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "ConsentWise AI",
   "version": "1.0.0",
-  "description": "Intelligently detects financial consent actions and redirects for safe, informed agreement.",
+  "description": "Reviews consent, payment and privacy language on the page and helps you decide before you agree.",
   "action": {
     "default_popup": "src/popup/popup.html",
     "default_title": "ConsentWise AI"
@@ -13,7 +13,7 @@
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
-      "js": ["src/config/config.js", "src/shared/identity.js", "src/content/content.js"],
+      "js": ["src/config/config.js", "src/shared/identity.js", "src/content/detect.js", "src/content/content.js"],
       "css": ["src/content/overlay.css"],
       "run_at": "document_idle"
     }
@@ -23,17 +23,10 @@
     "scripting",
     "tabs",
     "storage",
-    "offscreen",
-    "microphone"
+    "offscreen"
   ],
   "host_permissions": [
     "<all_urls>",
     "http://localhost:8000/*"
-  ],
-  "web_accessible_resources": [
-    {
-      "resources": ["src/offscreen/offscreen.html"],
-      "matches": ["<all_urls>"]
-    }
   ]
 }
