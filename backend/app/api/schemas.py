@@ -1,5 +1,3 @@
-from typing import List, Optional
-
 from pydantic import BaseModel, Field
 
 
@@ -14,9 +12,9 @@ class SummaryResponse(BaseModel):
     reputation_score: int = Field(..., ge=0, le=100)
     login_safety: str
     reputation_summary: str
-    reputation_examples: List[str]
+    reputation_examples: list[str]
     summary: str
-    key_points: List[str]
+    key_points: list[str]
     accessibility_hint: str
     intent: str
 
@@ -38,7 +36,7 @@ class ExtensionConfigResponse(BaseModel):
     panel_loading_copy: str
     panel_empty_copy: str
     footer_text: str
-    features: List[ExtensionFeature]
+    features: list[ExtensionFeature]
 
 
 class ExtensionAnalyzeRequest(BaseModel):
@@ -46,6 +44,8 @@ class ExtensionAnalyzeRequest(BaseModel):
     title: str = ""
     url: str = ""
     source: str = "extension"
+    # Extension-generated client id; when present the analysis is saved to history.
+    client_id: str | None = None
 
 
 class RiskSignal(BaseModel):
@@ -64,12 +64,12 @@ class AnalysisRecord(BaseModel):
     login_safety: str
     login_guidance: str
     reputation_summary: str
-    reputation_examples: List[str]
+    reputation_examples: list[str]
     summary: str
-    key_points: List[str]
+    key_points: list[str]
     accessibility_hint: str
     intent: str
-    risk_signals: List[RiskSignal]
+    risk_signals: list[RiskSignal]
     recommended_action: str
     original_text_excerpt: str
 

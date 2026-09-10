@@ -1,0 +1,62 @@
+[project]
+name = "consentwise-backend"
+version = "1.0.0"
+description = "FastAPI backend for the ConsentWise AI browser extension."
+readme = "README.md"
+requires-python = ">=3.12"
+authors = [{ name = "Akash Chaudhari" }]
+dependencies = [
+    "fastapi==0.115.2",
+    "uvicorn[standard]==0.24.0",
+    "httpx==0.27.2",
+    "python-dotenv==1.0.1",
+    "python-multipart==0.0.9",
+    "SQLAlchemy[asyncio]==2.0.35",
+    "asyncpg==0.30.0",
+    "alembic==1.19.2",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3",
+    "pytest-asyncio>=0.23",
+    "respx>=0.21",
+    "aiosqlite>=0.20",
+    "ruff>=0.16",
+]
+
+# Requirements files stay the install path (see README); this table just
+# documents the same set for tooling that reads pyproject.
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+filterwarnings = [
+    "ignore::DeprecationWarning",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle errors
+    "F",    # pyflakes
+    "I",    # isort
+    "UP",   # pyupgrade
+    "B",    # flake8-bugbear
+    "SIM",  # flake8-simplify
+    "C4",   # flake8-comprehensions
+]
+ignore = [
+    "E501",   # line length is handled by the formatter
+    "B008",   # FastAPI uses `Depends(...)` / `File(...)` as argument defaults
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["app"]
+
+[tool.ruff.lint.per-file-ignores]
+# conftest sets env vars before importing the app on purpose.
+"tests/conftest.py" = ["E402"]

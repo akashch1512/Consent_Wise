@@ -1,110 +1,104 @@
-# 🛡️ ConsentWise AI — Chrome Extension
+# 🛡️ ConsentWise AI — Browser Extension
 
-> **Hackathon Project · Accessible Financial Authorization**
-> Intelligently detects financial consent actions, prevents blind agreement, and redirects users to a safe analysis dashboard.
+Detects financial / consent / privacy language on a page, intercepts blind
+"I agree" clicks, and opens a readable safety analysis backed by the
+ConsentWise backend (FastAPI + OpenAI).
 
----
-
-## 📁 File Structure
-
-```
-ConsentWise-AI/
-├── manifest.json       ← Manifest V3 config
-├── content.js          ← Page-level detection & interception
-├── background.js       ← Service worker / tab manager
-├── popup.html          ← Extension popup dashboard UI
-├── popup.js            ← Popup logic & stats
-├── styles.css          ← Overlay & highlight styles (injected into pages)
-├── icons/              ← (Add your own PNG icons: 16, 48, 128px)
-│   ├── icon16.png
-│   ├── icon48.png
-│   └── icon128.png
-└── README.md
-```
+Works in Chrome and Edge (Manifest V3).
 
 ---
 
-## ⚡ Quick Setup
+## Folder structure
 
-### 1. Add placeholder icons (required for Chrome to load)
-You can use any small PNG files renamed to `icon16.png`, `icon48.png`, `icon128.png` and placed in an `icons/` subfolder. Or generate them with any icon tool.
+```
+extension/
+├── manifest.json
+├── README.md
+└── src/
+    ├── config/
+    │   ├── config.js          single source of truth for backend URLs (globalThis.ConsentWise)
+    │   └── i18n.js             popup translations + tiny translation engine
+    ├── shared/
+    │   └── identity.js         per-user client id + backend profile sync (globalThis.ConsentWiseIdentity)
+    ├── background/
+    │   └── service-worker.js   opens the analysis tab, manages the offscreen doc
+    ├── content/
+    │   ├── content.js          page scanning, click interception, overlay
+    │   └── overlay.css         styles injected into pages
+    ├── offscreen/
+    │   ├── offscreen.html
+    │   └── offscreen.js        records the mic for speech-to-text
+    ├── popup/
+    │   ├── popup.html
+    │   └── popup.js            toolbar UI: analysis, chat, quiz, TTS, doc upload, onboarding
+    └── demo/
+        ├── index.html          standalone image-analysis demo (not wired into the toolbar)
+        ├── demo.js
+        └── demo.css
+```
 
-### 2. Load the extension
-1. Open Chrome → navigate to `chrome://extensions`
-2. Toggle **Developer Mode** ON (top-right)
-3. Click **"Load unpacked"**
-4. Select the `ConsentWise-AI/` folder
-5. The extension appears in your toolbar 🎉
+### Load order per context
 
-### 3. Start your web app (optional, for full flow)
-```bash
-# Your analysis dashboard should be running at:
-http://localhost:3000
-```
-The extension will pass extracted page content as a URL query param:
-```
-http://localhost:3000?data=ENCODED_TEXT
-```
+`config.js` runs first everywhere and publishes `globalThis.ConsentWise`
+(`BACKEND_URL`, `WEB_APP_URL`, `TRUSTED_ORIGINS`, `API.*`). `identity.js`
+(`globalThis.ConsentWiseIdentity`) runs next where a user id is needed.
+
+| Context | Wiring |
+|---|---|
+| content script | `manifest.json` → `"js": ["src/config/config.js", "src/shared/identity.js", "src/content/content.js"]` |
+| popup | `<script>` tags: `../config/config.js`, `../config/i18n.js`, `../shared/identity.js`, `popup.js` |
+| offscreen | `<script>` tags: `../config/config.js`, `offscreen.js` |
+| service worker | no backend calls — no imports |
+| popup → tab injection | `chrome.scripting.executeScript({ files: ["src/config/config.js", "src/shared/identity.js", "src/content/content.js"] })` |
+
+To target a deployed backend, change the two URLs at the top of
+`src/config/config.js` — nothing else.
 
 ---
 
-## 🔍 How It Works
+## Per-user data
+
+There is no login. On first run `identity.js` generates a random `clientId`
+(UUID) and stores it in `chrome.storage.local`. That id keys the user's data on
+the backend.
+
+- **Sent to the backend (durable, Postgres):**
+  - onboarding profile — name, email, interest chips, language — via `POST /api/users`
+  - every analysis — url, title, danger/reputation scores, summary — attached to
+    `/api/extension/analyze` and `/api/analyze-document` as `client_id`
+- **Kept in `chrome.storage.local` (convenience only):** `clientId`,
+  `hasSeenWelcome`, `globalLangCode`, `protectionEnabled`, the cached last
+  analysis, and a `userProfile` copy so the onboarding form re-populates
+  instantly.
+
+Backend persistence is optional — if the backend has no `DATABASE_URL`, the
+sync calls fail quietly and the extension still works.
+
+---
+
+## Setup
+
+1. Start the backend (`../backend/README.md`) at `http://localhost:8000`.
+2. Open `chrome://extensions` (or `edge://extensions`).
+3. Enable **Developer mode** → **Load unpacked** → select this `extension/` folder.
+
+---
+
+## How it works
 
 | Step | What happens |
-|------|-------------|
-| 1    | `content.js` scans the page for checkboxes near "agree/terms" text |
-| 2    | `content.js` scans for buttons with words like "agree", "pay", "proceed" |
-| 3    | MutationObserver watches for dynamically added elements (SPAs) |
-| 4    | User clicks → event is **intercepted** (preventDefault + stopPropagation) |
-| 5    | Matching element gets a **red border highlight** |
-| 6    | A **premium animated overlay** appears with step indicators |
-| 7    | User clicks "Analyze & Continue Safely" |
-| 8    | Page content (first 5,000 chars) is extracted and **URL-encoded** |
-| 9    | `background.js` opens (or reuses) a tab at `localhost:3000?data=…` |
+|------|--------------|
+| 1 | `content.js` scans for agreement checkboxes / consent buttons; a `MutationObserver` catches ones added later |
+| 2 | A matching click is intercepted (capture-phase `preventDefault`) and the element is highlighted |
+| 3 | An overlay explains what was caught |
+| 4 | On "Analyze & Continue Safely", page text + `client_id` → `POST /api/extension/analyze` |
+| 5 | `service-worker.js` opens (or reuses) a tab on the backend `/dashboard/{id}` report |
+
+The popup runs the same analysis for the current tab, plus a document/image
+uploader, grounded chat, a comprehension quiz, and text-to-speech.
 
 ---
 
-## 🎨 UI Features
+## Debugging
 
-- **Overlay**: Dark frosted-glass backdrop, gradient card, animated spinner + pulse ring, 3-step progress indicator
-- **Buttons**: Primary gradient CTA + ghost cancel button
-- **Popup**: Live status pill, feature list with icons, animated stats counter, dashboard CTA
-
----
-
-## 🔐 Permissions Used
-
-| Permission | Reason |
-|------------|--------|
-| `activeTab` | Access current page's tab info |
-| `scripting` | Programmatic script injection if needed |
-| `tabs` | Open the analysis dashboard tab |
-| `host_permissions: <all_urls>` | Content script runs on all pages |
-
----
-
-## 🐛 Debugging
-
-Open DevTools on any page → Console, filter by `[ConsentWise`:
-
-```
-[ConsentWise AI] 🛡️  Initialised on: https://...
-[ConsentWise AI] ☑️  Agreement checkbox detected
-[ConsentWise AI] 🔘 Consent button detected: pay now
-[ConsentWise AI] 🚫 Button intercept fired
-[ConsentWise AI] 🔀 Redirecting to web app
-[ConsentWise BG] ✅ New analysis tab created: 42
-```
-
----
-
-## 💡 Hackathon Edge Points
-
-- ✅ Manifest V3 (latest standard)
-- ✅ Both checkbox AND button interception
-- ✅ MutationObserver for SPAs / lazy-loaded content
-- ✅ Capture-phase event listeners (fire before host handlers)
-- ✅ Premium fintech-style overlay (no `alert()` calls)
-- ✅ Smart tab reuse in background service worker
-- ✅ Graceful error handling + fallback `window.open`
-- ✅ Fully commented, production-quality code
+Filter the page console by `[ConsentWise`.
